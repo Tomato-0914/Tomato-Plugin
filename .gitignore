@@ -1,3 +1,4 @@
 config/config.yaml
 config/alias/*.yaml
 node_modules/
+data/

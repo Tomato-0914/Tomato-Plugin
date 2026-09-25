@@ -4,7 +4,7 @@ import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { getConfig, pluginRoot, pluginName, dataRoot, ensureDir } from './config.js'
 import { sanitizeHtml } from './sanitize.js'
-import { extractWeapon } from './weapon.js'
+import { extractWeapon, materialDays } from './weapon.js'
 
 const TPL = path.join(pluginRoot, 'resources', 'html', 'entry.html')
 const WTPL = path.join(pluginRoot, 'resources', 'html', 'weapon.html')
@@ -145,16 +145,23 @@ async function doRender (gameKey, entry, view, r, tplFile = TPL) {
  * 缓存键 = 正文内容 + 模板 + 渲染配置 的哈希，观测枢一更新就自动重渲染。
  */
 export async function renderEntry (gameKey, entry, content, { force = false, onMiss } = {}) {
-  const r = getConfig().render || {}
+  const cfg = getConfig()
+  const r = cfg.render || {}
   const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
 
   let view
   let tplFile = TPL
   if (weapon) {
     tplFile = WTPL
+    const wc = cfg.weapon || {}
+    const chars = weapon.characters || []
     view = {
       ...weapon,
-      starText: '★'.repeat(weapon.rate || 0),
+      width: wc.width || 1280,
+      stars: Array.from({ length: Math.min(weapon.rate || 0, 5) }, (_, i) => i),
+      days: materialDays(weapon.materials, wc.domainDays),
+      obtainWide: String(weapon.obtain || '').length > 6,
+      blanks: Array.from({ length: Math.max(6, Math.ceil(chars.length / 6) * 6) - chars.length }, (_, i) => i),
       time: '',
       entryId: entry.id
     }

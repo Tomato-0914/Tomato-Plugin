@@ -5,6 +5,8 @@ import { modulesToContents } from './wiki.js'
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+/** 详情缓存结构版本，解析结果的结构变了就加一，旧缓存会自动重新拉取 */
+const DETAIL_VERSION = 2
 
 /**
  * 目录条目的 ext 里带筛选标签，形如
@@ -157,9 +159,9 @@ export class ObcSource {
     const ttl = getConfig().api?.detailTTL ?? 43200
     const file = path.join(this.dir, 'detail', `${id}.json`)
     const cache = this.readCache(file, ttl)
-    if (!force && cache?.fresh) return cache.data
+    if (!force && cache?.fresh && cache.data?.ver === DETAIL_VERSION) return cache.data
     try {
-      const content = await this.fetchDetail(id)
+      const content = { ...await this.fetchDetail(id), ver: DETAIL_VERSION }
       this.writeCache(file, content)
       return content
     } catch (err) {
