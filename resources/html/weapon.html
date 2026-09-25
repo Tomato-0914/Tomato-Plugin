@@ -81,6 +81,7 @@
   .tile.char { background: linear-gradient(160deg, #E9DDCB, #D8C6AB); }
   .tile.blank { background: #EDE5D9; box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 7px; }
   .tile.blank i { width: 8px; height: 8px; border-radius: 50%; background: #CDBFA8; }
+  .empty { margin: 0; padding: 20px 0 6px; text-align: center; font-size: 16px; color: #A89E8E; letter-spacing: 2px; }
   .char-name { display: block; margin-top: 4px; font-size: 12px; line-height: 1.3; text-align: center; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .foot { position: relative; margin-top: 16px; display: flex; justify-content: space-between; font-size: 12px; color: #A89E8E; }
@@ -175,6 +176,7 @@
 
       <div class="card block">
         <h2>推荐角色</h2>
+        {{if characters.length}}
         <div class="grid">
           {{each characters c}}
           <div>
@@ -184,6 +186,9 @@
           {{/each}}
           {{each blanks}}<div class="tile blank"><i></i><i></i><i></i></div>{{/each}}
         </div>
+        {{else}}
+        <p class="empty">观测枢暂未收录推荐角色</p>
+        {{/if}}
       </div>
     </section>
   </div>

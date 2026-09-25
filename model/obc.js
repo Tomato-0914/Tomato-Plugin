@@ -190,6 +190,16 @@ export class ObcSource {
     }
   }
 
+  /** 接口原始返回（调试用，不做解析和缓存） */
+  async getRawDetail (id) {
+    const split = getConfig().api?.detailIdSplit ?? 500000
+    const { base, appSn } = this.game
+    const newBase = this.game.newBase || 'https://api-takumi.mihoyo.com/hoyowiki/genshin/wapi'
+    return Number(id) >= split
+      ? this.request(`${newBase}/entry_page?app_sn=${appSn}&lang=zh-cn&entry_page_id=${encodeURIComponent(id)}`)
+      : this.request(`${base}/content/info?app_sn=${appSn}&content_id=${encodeURIComponent(id)}`)
+  }
+
   /** 旧版（blackboard）详情，返回的 data.content 已经是规范结构 */
   async getObsDetail (id) {
     const { base, appSn } = this.game

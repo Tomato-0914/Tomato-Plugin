@@ -41,21 +41,25 @@ function skillName (html) {
 /** 从装备描述 HTML 里拆出技能名 / 技能描述 / 背景故事 / 获取途径（新旧接口结构一致） */
 function parseSkill (html) {
   const h = String(html ?? '')
-  const strong = h.match(/<strong[^>]*>([\s\S]*?)<\/strong>/i)?.[1] ?? ''
+  const hr = h.search(/<hr[^>]*>/i)
+  const head = hr >= 0 ? h.slice(0, hr) : h
+  const open = head.search(/<strong[^>]*>/i)
   let name = ''
   let desc = ''
-  if (strong) {
-    const m = strong.match(/^([^<]*?)(?:<br[^>]*>|\n)/i)
+  if (open >= 0) {
+    const inner = head.slice(open).replace(/^<strong[^>]*>/i, '')
+    const m = inner.match(/^([^<]*?)(?:<br[^>]*>|\n)/i)
+    let rest = inner
     if (m) {
       name = strip(m[1]).trim()
-      desc = strong.slice(m[0].length).replace(/^\s*·\s*/, '')
-    } else {
-      desc = strong
+      rest = inner.slice(m[0].length)
     }
+    if (hr < 0) rest = rest.split(/<\/strong>/i)[0]
+    desc = `<p>${rest.replace(/<\/?strong[^>]*>/gi, '').replace(/^\s*·\s*/, '')}`
+      .replace(/<p[^>]*>(\s|&nbsp;|<br[^>]*>)*<\/p>/gi, '')
+      .trim()
   }
-  const afterHr = h.split(/<hr[^>]*>/i)[1]
-  const afterStrong = h.split(/<\/strong>/i)[1]
-  const tail = afterHr || afterStrong || ''
+  const tail = hr >= 0 ? h.slice(hr).replace(/^<hr[^>]*>/i, '') : (h.split(/<\/strong>/i)[1] || '')
   const flavor = strip(tail.split(/<table/i)[0]).trim()
   const ob = h.match(/获取途径[：:]?\s*<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/i)
   const obtain = ob ? strip(ob[1]).trim() : ''
@@ -122,18 +126,19 @@ function extractMaterials (html) {
   return tagRarity(out)
 }
 
-/** 推荐角色：从 custom-entry-wrapper 里取头像和名字 */
+/** 推荐角色：从词条卡片（custom-entry-wrapper / entry-material-box）里取头像和名字 */
 function extractCharacters (html) {
+  const h = String(html ?? '')
   const out = []
-  const seen = new Set()
-  for (const m of String(html ?? '').matchAll(/<span class="custom-entry-wrapper"([^>]*)>/g)) {
-    const img = m[1].match(/data-entry-img="([^"]+)"/)?.[1]
-    const name = m[1].match(/data-entry-name="([^"]+)"/)?.[1]
-    if (!img || !name) continue
-    const key = `${img}|${name}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    out.push({ name: decode(name).trim(), img })
+  const push = (name, img) => {
+    name = decode(name).trim()
+    if (name && img && !out.some(c => c.name === name)) out.push({ name, img })
+  }
+  for (const [tag] of h.matchAll(/<span\b[^>]*class="[^"]*custom-entry-wrapper[^"]*"[^>]*>/g)) {
+    push(tag.match(/data-entry-name="([^"]+)"/)?.[1], tag.match(/data-entry-img="([^"]+)"/)?.[1])
+  }
+  if (!out.length) {
+    for (const m of h.matchAll(/<a\b[^>]*entry-material-box[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[\s\S]*?class="name">([^<]+)</g)) push(m[2], m[1])
   }
   return out
 }
@@ -167,7 +172,7 @@ export function enrichWeapon (w, content) {
     if (stats.length) w.base = stats
   }
 
-  const chars = section(content, '推荐角色')
+  const chars = section(content, '推荐角色', '适用角色', '适配角色')
   if (chars) {
     const list = extractCharacters(chars.text)
     if (list.length) w.characters = list

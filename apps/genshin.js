@@ -189,6 +189,12 @@ export class ObcGenshin extends plugin {
 
     const file = path.join(ensureDir(path.join(dataRoot, GAME, 'debug')), `${res.entry.id}.json`)
     fs.writeFileSync(file, JSON.stringify(content, null, 2))
+    const rawFile = file.replace(/\.json$/, '.raw.json')
+    try {
+      fs.writeFileSync(rawFile, JSON.stringify(await source.getRawDetail(res.entry.id), null, 2))
+    } catch (err) {
+      logger.warn(`[${pluginName}] 原始数据导出失败：${err.message}`)
+    }
 
     const secs = Array.isArray(content.contents) ? content.contents : []
     const html = secs.map(s => s?.text || '').join('') || content.content || ''
@@ -206,7 +212,8 @@ export class ObcGenshin extends plugin {
         ? `分段 ${secs.length} 个：\n${secs.map(s => `- ${s?.name || '（无名）'}：${(s?.text || '').length} 字符`).join('\n')}`
         : `没有 contents 分段，content 长度 ${String(content.content || '').length}`,
       `常见 class：${topClasses.join(' ') || '无'}`,
-      `原始数据：${path.relative(process.cwd(), file)}`
+      `解析结果：${path.relative(process.cwd(), file)}`,
+      `接口原始数据：${path.relative(process.cwd(), rawFile)}`
     ]
     return sendMany(this.e, chunkText(lines.join('\n')), '图鉴调试')
   }
