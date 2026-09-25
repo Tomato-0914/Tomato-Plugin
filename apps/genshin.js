@@ -3,10 +3,13 @@ import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from '../model/config.js'
 import { ObcSource } from '../model/obc.js'
 import { matchEntry, listCategory, getAliases } from '../model/match.js'
-import { renderEntry, clearRendered } from '../model/render.js'
+import { renderEntry } from '../model/render.js'
 
 const GAME = 'gs'
 const source = new ObcSource(GAME)
+
+/** 清理旧版本留下的图片缓存目录 */
+fs.rmSync(path.join(dataRoot, GAME, 'render'), { recursive: true, force: true })
 
 const HELP = [
   '【观测枢图鉴 · 原神】',
@@ -14,9 +17,9 @@ const HELP = [
   '#武器图鉴：列出某个分类下的全部条目',
   '#图鉴分类：看看有哪些分类',
   '#图鉴更新：重新拉取目录（主人）',
-  '#图鉴强制更新：清空全部缓存（主人）',
-  '#图鉴清除缓存：清空已生成的图片（主人）',
-  '#图鉴清除缓存胡桃：清掉该条目缓存并重新生成（主人）',
+  '#图鉴强制更新：清空全部数据缓存（主人）',
+  '#图鉴清除缓存：清空全部条目详情缓存（主人）',
+  '#图鉴清除缓存胡桃：重新拉取该条目并生成（主人）',
   '#图鉴调试胡桃：导出原始数据（主人）'
 ].join('\n')
 
@@ -133,8 +136,7 @@ export class ObcGenshin extends plugin {
     let imgs
     try {
       imgs = await renderEntry(GAME, entry, content, {
-        force,
-        onMiss: () => getConfig().renderTip && this.reply(`正在生成「${entry.title}」，第一次会慢一点…`)
+        onStart: () => getConfig().renderTip && this.reply(`正在生成「${entry.title}」，请稍候…`)
       })
     } catch (err) {
       logger.error(err)
@@ -145,24 +147,21 @@ export class ObcGenshin extends plugin {
 
   async update () {
     const force = this.e.msg.includes('强制')
-    if (force) {
-      source.clearDetails()
-      clearRendered(GAME)
-    }
+    if (force) source.clearDetails()
     try {
       const index = await source.getIndex(true)
-      return this.reply(`目录已更新，共 ${index.length} 条${force ? '；详情和图片缓存已清空' : ''}`)
+      return this.reply(`目录已更新，共 ${index.length} 条${force ? '；详情缓存已清空' : ''}`)
     } catch (err) {
       return this.reply(`更新失败：${err.message}`)
     }
   }
 
-  /** 不带名称清空全部图片缓存；带名称清掉该条目的详情和图片缓存后重新生成 */
+  /** 不带名称清空全部详情缓存；带名称重新拉取该条目并生成 */
   async clearCache () {
     const q = this.e.msg.replace(/^#(原神)?图鉴清除缓存\s*/, '').trim()
     if (!q) {
-      clearRendered(GAME)
-      return this.reply('已清空全部图片缓存，下次查询时重新生成')
+      source.clearDetails()
+      return this.reply('已清空全部详情缓存，下次查询时重新拉取')
     }
     let index
     try {
@@ -174,7 +173,6 @@ export class ObcGenshin extends plugin {
     const res = matchEntry(q, index, { aliases: getAliases(GAME), priority: game.categoryPriority || [] })
     if (res.type !== 'hit') return this.reply(`没找到唯一条目「${q}」`)
     source.clearDetails(res.entry.id)
-    clearRendered(GAME, res.entry.id)
     return this.sendEntry(res.entry, true)
   }
 
