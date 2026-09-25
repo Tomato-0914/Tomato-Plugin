@@ -1,14 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import crypto from 'node:crypto'
-import { fileURLToPath } from 'node:url'
-import { getConfig, pluginRoot, pluginName, dataRoot, ensureDir } from './config.js'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { getConfig, pluginRoot, pluginName } from './config.js'
 import { sanitizeHtml } from './sanitize.js'
 import { extractWeapon, materialDays } from './weapon.js'
 
 const TPL = path.join(pluginRoot, 'resources', 'html', 'entry.html')
 const WTPL = path.join(pluginRoot, 'resources', 'html', 'weapon.html')
-const md5 = s => crypto.createHash('md5').update(s).digest('hex')
 
 let renderer = null
 async function getRenderer () {
@@ -90,23 +88,16 @@ function toBuffers (ret) {
   return out
 }
 
-function readRendered (dir, hash) {
-  if (!fs.existsSync(dir)) return []
-  return fs.readdirSync(dir)
-    .filter(f => f.startsWith(`${hash}_`) && f.endsWith('.jpg'))
-    .sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]))
-    .map(f => fs.readFileSync(path.join(dir, f)))
-}
+const WEAPON_DIRS = { 单手剑: 'sword', 双手剑: 'claymore', 长柄武器: 'polearm', 弓: 'bow', 法器: 'catalyst' }
 
-function saveRendered (dir, hash, bufs) {
-  fs.rmSync(dir, { recursive: true, force: true })
-  ensureDir(dir)
-  bufs.forEach((buf, i) => fs.writeFileSync(path.join(dir, `${hash}_${i}.jpg`), buf))
-}
-
-/** 清除渲染图片缓存：传 id 只清该条目，否则全部清空 */
-export function clearRendered (gameKey, id) {
-  fs.rmSync(path.join(dataRoot, gameKey, 'render', ...(id ? [String(id)] : [])), { recursive: true, force: true })
+/** 武器立绘：优先用喵喵插件的本地图（透明底），没有再用观测枢的图标兜底 */
+export function weaponArt (weapon, dir) {
+  const type = WEAPON_DIRS[weapon.type]
+  if (dir && type && weapon.name) {
+    const file = path.resolve(process.cwd(), dir, type, weapon.name, 'gacha.webp')
+    if (fs.existsSync(file)) return { image: pathToFileURL(file).href, local: true }
+  }
+  return { image: weapon.image || '', local: false }
 }
 
 async function doRender (gameKey, entry, view, r, tplFile = TPL) {
@@ -141,11 +132,8 @@ async function doRender (gameKey, entry, view, r, tplFile = TPL) {
   return bufs
 }
 
-/**
- * 渲染一个条目，返回图片 Buffer 数组。
- * 缓存键 = 正文内容 + 模板 + 渲染配置 的哈希，观测枢一更新就自动重渲染。
- */
-export async function renderEntry (gameKey, entry, content, { force = false, onMiss } = {}) {
+/** 渲染一个条目，返回图片 Buffer 数组；不缓存图片，每次都重新生成 */
+export async function renderEntry (gameKey, entry, content, { onStart } = {}) {
   const cfg = getConfig()
   const r = cfg.render || {}
   const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
@@ -158,6 +146,7 @@ export async function renderEntry (gameKey, entry, content, { force = false, onM
     const chars = weapon.characters || []
     view = {
       ...weapon,
+      ...weaponArt(weapon, wc.artDir),
       characters: chars.slice(0, 6),
       width: wc.width || 1280,
       height: wc.height || 800,
@@ -183,24 +172,15 @@ export async function renderEntry (gameKey, entry, content, { force = false, onM
     }
   }
 
-  const tpl = fs.readFileSync(tplFile, 'utf8')
-  const hash = md5(JSON.stringify([tpl, r, view])).slice(0, 12)
   view.time = new Date().toLocaleString('zh-CN', { hour12: false })
-  const dir = path.join(dataRoot, gameKey, 'render', entry.id)
 
-  if (!force) {
-    const cached = readRendered(dir, hash)
-    if (cached.length) return cached
-  }
-
-  const key = `${gameKey}:${entry.id}:${hash}`
+  const key = `${gameKey}:${entry.id}`
   if (inflight.has(key)) return inflight.get(key)
 
   const job = (async () => {
-    onMiss?.()
+    onStart?.()
     const bufs = await enqueue(() => doRender(gameKey, entry, view, r, tplFile))
     if (!bufs.length) throw new Error('渲染器没有返回图片，看一下后台日志')
-    saveRendered(dir, hash, bufs)
     return bufs
   })().finally(() => inflight.delete(key))
 
