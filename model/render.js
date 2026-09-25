@@ -167,8 +167,11 @@ export async function renderEntry (gameKey, entry, content, { onStart } = {}) {
       ...card,
       stars: Array.from({ length: Math.min(card.stars || 0, 5) }, (_, i) => i),
       summary: card.summary || '',
+      art: card.art || null,
+      bottom: card.bottom || '',
       width: cc.width || 1280,
-      height: cc.height || 800,
+      height: card.mainHeight ? 0 : cc.height || 800,
+      mainHeight: card.mainHeight || 0,
       time: '',
       entryId: entry.id
     }

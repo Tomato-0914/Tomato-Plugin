@@ -119,10 +119,14 @@ function renderList (list, opts = {}) {
 }
 
 /** 一段 widget data → HTML */
+/** { key, value: [...] } 形式的字段（新版圣遗物等）摊平成字符串 */
+const flat = x => (x && typeof x === 'object' && !Array.isArray(x) && 'value' in x) ? [].concat(x.value ?? []).join('') : x
+
 function dataToHtml (d, opts = {}) {
   if (d == null) return ''
   if (typeof d === 'string') return clean(d)
   if (typeof d !== 'object') return esc(String(d))
+  d = { ...d, name: flat(d.name), title: flat(d.title), desc: flat(d.desc), story: flat(d.story) }
 
   const out = []
   if (typeof d.rich_text === 'string') out.push(clean(d.rich_text))

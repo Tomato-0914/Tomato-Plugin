@@ -17,7 +17,7 @@
   html, body { margin: 0; padding: 0; background: var(--bg); }
   body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.7; }
   #container {
-    position: relative; display: flex; flex-direction: column; width: {{width}}px; height: {{height}}px; padding: 36px 44px 22px; overflow: hidden;
+    position: relative; display: flex; flex-direction: column; width: {{width}}px;{{if height}} height: {{height}}px;{{/if}} padding: 36px 44px 22px; overflow: hidden;
     background: repeating-linear-gradient(90deg, rgba(120, 100, 70, .025) 0 2px, transparent 2px 26px), var(--bg);
   }
 
@@ -36,9 +36,19 @@
   .art { position: relative; flex: none; height: 400px; }
   .art svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; }
   .art-img { position: absolute; left: 50%; top: 50%; width: 62%; height: 62%; transform: translate(-50%, -50%); object-fit: contain; filter: drop-shadow(0 10px 16px rgba(40, 30, 20, .28)); }
-  .art.large .art-img { width: 86%; height: 96%; }
-  .art.map { height: 470px; border-radius: 10px; border: 2px solid var(--line-deep); background: #F4EEE3; box-shadow: inset 0 0 0 5px #FBF8F2; overflow: hidden; }
-  .art.map .art-img { width: 94%; height: 94%; filter: none; }
+  .art.frame { height: auto; max-height: 480px; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 10px; border: 2px solid var(--line-deep); background: #F4EEE3; box-shadow: inset 0 0 0 4px #FBF8F2; overflow: hidden; }
+  .frame-img { display: block; width: 100%; min-height: 0; flex: 0 1 auto; object-fit: contain; border-radius: 6px; }
+
+  /* 底部整行：圣遗物部件 / 适用角色 */
+  .bottom { position: relative; flex: none; display: flex; flex-direction: column; gap: 18px; margin-top: 18px; }
+  .pieces { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
+  .piece { text-align: center; }
+  .piece-art { width: 150px; height: 150px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, #F6F0E6 0 60%, #EADFCB 61% 64%, transparent 65%); display: flex; align-items: center; justify-content: center; }
+  .piece-art img { width: 82%; height: 82%; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(40, 30, 20, .25)); }
+  .piece-name { margin: 10px auto 0; padding: 4px 8px; background: #fff; border: 1px solid var(--line); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); font-size: 18px; font-weight: 700; color: var(--brown); letter-spacing: 1px; }
+  .piece-slot { margin-top: 8px; font-size: 12px; color: #A89E8E; letter-spacing: 2px; }
+  .piece-desc { margin-top: 4px; padding: 0 4px; font-size: 13px; line-height: 1.6; color: var(--ink-soft); text-align: left; }
+  .wide .icons { justify-content: center; gap: 12px 48px; }
 
   /* 通用卡片 */
   .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
@@ -100,9 +110,10 @@
     </defs>
   </svg>
 
-  <div class="main">
+  <div class="main"{{if mainHeight}} style="flex: none; height: {{mainHeight}}px"{{/if}}>
     <section class="left">
-      <div class="art {{art.mode}}{{if art.large}} large{{/if}}">
+      {{if art}}
+      <div class="art {{art.mode}}">
         {{if art.mode === 'circle'}}
         <svg class="deco" viewBox="0 0 500 420">
           <g fill="#E7DDCD">
@@ -123,9 +134,12 @@
             <use href="#gem" transform="translate(440 210) rotate(90)"/>
           </g>
         </svg>
+        {{if art.images[0]}}<img class="art-img" src="{{art.images[0]}}" referrerpolicy="no-referrer">{{/if}}
+        {{else}}
+        {{each art.images img}}<img class="frame-img" src="{{img}}" referrerpolicy="no-referrer">{{/each}}
         {{/if}}
-        {{if art.image}}<img class="art-img" src="{{art.image}}" referrerpolicy="no-referrer">{{/if}}
       </div>
+      {{/if}}
       {{@ left}}
     </section>
 
@@ -155,6 +169,8 @@
       {{@ right}}
     </section>
   </div>
+
+  {{if bottom}}<div class="bottom">{{@ bottom}}</div>{{/if}}
 
   <footer class="foot">
     <span>数据来源：米游社观测枢，内容版权归米哈游所有</span>
