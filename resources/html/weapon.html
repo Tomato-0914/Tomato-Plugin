@@ -4,133 +4,189 @@
 <meta charset="utf-8">
 <style>
   :root {
-    --paper: #EBE3D0;
-    --paper-light: #F6EEDD;
-    --paper-deep: #E3D7BD;
-    --ink: #4A4438;
-    --ink-soft: #8A816E;
-    --slate: #2F3648;
-    --gold: #C9A66B;
-    --gold-deep: #A9824A;
-    --line: #D8C9AC;
-    --serif: "Noto Serif CJK SC", "Source Han Serif SC", "Source Han Serif CN", "Songti SC", serif;
-    --sans: "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
+    --bg: #F3F1ED;
+    --card: #FAF9F6;
+    --line: #E2D8C7;
+    --line-deep: #D6C8B0;
+    --ink: #2E2A25;
+    --ink-soft: #6F665A;
+    --brown: #9C6B3C;
+    --hl: #E0473E;
+    --r1: linear-gradient(160deg, #8C8E91, #686B6F);
+    --r2: linear-gradient(160deg, #5B8A72, #3E6755);
+    --r3: linear-gradient(160deg, #5F8DB5, #43688D);
+    --r4: linear-gradient(160deg, #9C82C8, #6D57A0);
+    --r5: linear-gradient(160deg, #D09A55, #A8723A);
+    --sans: "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "HarmonyOS Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--paper); }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
   body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.7; }
-  #container { width: {{width}}px; background: var(--paper); padding-bottom: 24px; overflow: hidden; }
+  #container {
+    position: relative; width: {{width}}px; min-height: {{width * 9 / 16}}px; padding: 40px 44px 30px; overflow: hidden;
+    background: repeating-linear-gradient(90deg, rgba(120, 100, 70, .025) 0 2px, transparent 2px 26px), var(--bg);
+  }
 
-  /* 顶部：左侧圆形立绘法阵 + 右侧标题 */
-  .head { display: flex; align-items: center; gap: 28px; padding: 30px 32px 26px; background: linear-gradient(180deg, #F6EEDD 0%, #ECE2CD 100%); border-bottom: 3px solid var(--gold); }
-  .art { position: relative; width: 172px; height: 172px; flex: none; }
-  .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--gold); background: radial-gradient(circle at 50% 36%, #FBF5E7 0%, #E9DCBF 55%, #DCC89E 100%); box-shadow: 0 0 0 7px rgba(201, 166, 107, .16), inset 0 0 26px rgba(169, 130, 74, .28); }
-  .ring::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; border: 1px solid rgba(201, 166, 107, .6); pointer-events: none; }
-  .art-img { position: absolute; inset: 20px; width: calc(100% - 40px); height: calc(100% - 40px); object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .3)); }
-  .head-body { flex: 1; min-width: 0; }
-  .stars { color: #E0A030; font-size: 17px; letter-spacing: 4px; line-height: 1; }
-  .title { font-family: var(--serif); font-size: 34px; font-weight: 700; letter-spacing: 2px; line-height: 1.25; margin: 9px 0 0; }
-  .type { display: inline-block; margin-top: 12px; font-size: 13px; line-height: 24px; padding: 0 13px; border: 1px solid rgba(201, 166, 107, .55); border-radius: 12px; color: var(--gold-deep); background: rgba(201, 166, 107, .09); }
-  .flavor { margin: 12px 0 0; font-size: 14px; line-height: 1.7; color: var(--ink-soft); }
+  /* 外框：双线描边 + 四角圆点 */
+  .frame, .frame::after { position: absolute; border: 1.5px solid var(--line-deep); pointer-events: none; }
+  .frame { inset: 12px; border-radius: 18px; }
+  .frame::after { content: ""; inset: 5px; border-width: 1px; border-color: var(--line); border-radius: 14px; }
+  .corner { position: absolute; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line-deep); background: var(--bg); }
+  .corner.tl { left: 7px; top: 7px; } .corner.tr { right: 7px; top: 7px; }
+  .corner.bl { left: 7px; bottom: 7px; } .corner.br { right: 7px; bottom: 7px; }
 
-  /* 属性胶囊 */
-  .stats { display: flex; gap: 12px; margin: 22px 32px 0; }
-  .stat { flex: 1; min-width: 0; background: var(--paper-light); border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 10px; padding: 10px 12px 11px; text-align: center; }
-  .stat-k { display: block; font-size: 12px; color: var(--ink-soft); letter-spacing: 1px; }
-  .stat-v { display: block; font-family: var(--serif); font-size: 21px; font-weight: 700; color: var(--slate); margin-top: 2px; line-height: 1.3; }
-  .stat.obtain .stat-v { font-size: 14px; font-weight: 400; color: var(--ink); }
+  .main { position: relative; display: grid; grid-template-columns: 500px 1fr; gap: 32px; align-items: stretch; }
+  .left { display: flex; flex-direction: column; gap: 22px; }
+  .right { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 
-  .sec { margin: 26px 32px 0; }
-  .sec h2 { font-family: var(--serif); font-size: 20px; font-weight: 700; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
-  .sec h2::before { content: ""; width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg); flex: none; }
+  /* 左侧：圆形法阵 + 武器立绘 */
+  .art { position: relative; height: 420px; }
+  .art svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .art-img { position: absolute; left: 50%; top: 50%; width: 300px; height: 300px; transform: translate(-50%, -50%); object-fit: contain; filter: drop-shadow(0 10px 16px rgba(40, 30, 20, .28)); }
 
-  /* 升级材料 */
-  .materials { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px 10px; }
-  .mat { text-align: center; }
-  .mat-icon { position: relative; width: 100%; max-width: 84px; aspect-ratio: 1; margin: 0 auto; border-radius: 12px; background: linear-gradient(180deg, #F8F1E2 0%, #E8DBBE 100%); border: 1px solid var(--line); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .55); display: flex; align-items: center; justify-content: center; }
-  .mat-icon img { width: 72%; height: 72%; object-fit: contain; }
-  .mat-num { position: absolute; right: -5px; bottom: -5px; min-width: 20px; padding: 0 6px; line-height: 19px; border-radius: 10px; background: var(--slate); color: #F2EADB; font-size: 11px; text-align: center; border: 1px solid rgba(255, 255, 255, .35); }
-  .mat-name { display: block; margin-top: 7px; font-size: 11px; line-height: 1.35; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* 左侧：武器技能卡 */
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
+  .skill { flex: 1; padding: 22px 26px 24px; }
+  .skill-name { font-size: 26px; font-weight: 700; color: var(--brown); letter-spacing: 1px; line-height: 1.3; }
+  .skill-body { margin-top: 12px; font-size: 15px; line-height: 1.95; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .skill-body p { margin: 0; }
+  .skill-body span[style*="0, 151, 225"], .skill-body span[style*="0,151,225"] { color: var(--hl) !important; }
 
-  /* 武器技能 */
-  .skill-name { font-family: var(--serif); font-size: 20px; font-weight: 700; color: var(--gold-deep); letter-spacing: 1px; }
-  .skill-body { margin-top: 8px; overflow-wrap: anywhere; }
-  .skill-body p { margin: 6px 0; }
-  .skill-body img { max-width: 100%; height: auto; vertical-align: middle; }
+  /* 右侧：标题 */
+  .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .title { margin: 4px 0 0; font-size: 42px; font-weight: 900; letter-spacing: 2px; line-height: 1.2; }
+  .brand { flex: none; margin-top: 10px; font-size: 22px; color: var(--brown); letter-spacing: 2px; opacity: .85; }
+  .meta { display: flex; align-items: center; gap: 22px; }
+  .stars { flex: none; display: flex; gap: 6px; }
+  .stars svg { width: 38px; height: 38px; filter: drop-shadow(0 2px 2px rgba(180, 120, 0, .25)); }
+  .flavor { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
 
-  /* 推荐角色 */
-  .chars { display: flex; flex-wrap: wrap; gap: 18px 16px; }
-  .char { width: 84px; text-align: center; }
-  .char-avatar { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; margin: 0 auto; background: var(--paper-deep); border: 2px solid var(--gold); }
-  .char-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .char-name { display: block; margin-top: 7px; font-size: 12px; line-height: 1.3; color: var(--ink); }
+  /* 右侧：属性框 */
+  .stats { display: flex; flex-wrap: wrap; gap: 14px 18px; padding: 4px; }
+  .stat { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 16px; background: #fff; border: 1px solid var(--line); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); font-size: 20px; line-height: 1.5; }
+  .stat.wide { flex-basis: 100%; }
+  .stat-k { flex: none; font-weight: 700; color: var(--brown); }
+  .stat-v { text-align: right; color: var(--ink-soft); white-space: nowrap; }
+  .stat.wide .stat-v { font-size: 16px; white-space: normal; }
 
-  .foot { margin: 26px 32px 0; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
+  /* 右侧：材料 / 推荐角色卡 */
+  .block { padding: 18px 40px 26px; }
+  .block h2 { margin: 0 0 18px; text-align: center; font-size: 26px; font-weight: 500; color: #4E4841; letter-spacing: 3px; }
+  .grid { display: grid; grid-template-columns: repeat(6, 72px); justify-content: space-between; row-gap: 18px; }
+  .tile { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; background: var(--r1); box-shadow: 0 2px 4px rgba(40, 30, 20, .18); }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile.r1 { background: var(--r1); } .tile.r2 { background: var(--r2); } .tile.r3 { background: var(--r3); }
+  .tile.r4 { background: var(--r4); } .tile.r5 { background: var(--r5); }
+  .tile .num { position: absolute; right: -20px; bottom: 7px; width: 66px; transform: rotate(-45deg); background: var(--hl); color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; letter-spacing: 0; }
+  .tile.char { background: linear-gradient(160deg, #E9DDCB, #D8C6AB); }
+  .tile.blank { background: #EDE5D9; box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .tile.blank i { width: 8px; height: 8px; border-radius: 50%; background: #CDBFA8; }
+  .char-name { display: block; margin-top: 4px; font-size: 12px; line-height: 1.3; text-align: center; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .foot { position: relative; margin-top: 16px; display: flex; justify-content: space-between; font-size: 12px; color: #A89E8E; }
 </style>
 </head>
 <body>
 <div id="container">
-  <header class="head">
-    <div class="art">
-      <div class="ring">
+  <div class="frame"></div>
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#FFE266"/>
+        <stop offset="1" stop-color="#F4A60C"/>
+      </linearGradient>
+      <path id="spark" d="M0 -30 C3 -8 8 -3 30 0 C8 3 3 8 0 30 C-3 8 -8 3 -30 0 C-8 -3 -3 -8 0 -30Z"/>
+      <path id="gem" d="M0 -16 L9 0 L0 16 L-9 0Z"/>
+    </defs>
+  </svg>
+
+  <div class="main">
+    <section class="left">
+      <div class="art">
+        <svg class="deco" viewBox="0 0 500 420">
+          <g fill="#E7DDCD">
+            <use href="#spark" transform="translate(70 70) scale(1.1)"/>
+            <use href="#spark" transform="translate(438 88) scale(1.2)"/>
+            <use href="#spark" transform="translate(60 350) scale(1)"/>
+            <use href="#spark" transform="translate(440 352) scale(.9)"/>
+            <use href="#spark" transform="translate(120 30) scale(.5)"/>
+            <use href="#spark" transform="translate(395 395) scale(.5)"/>
+          </g>
+          <circle cx="250" cy="210" r="190" fill="none" stroke="#E6DCCB" stroke-width="2"/>
+          <circle cx="250" cy="210" r="176" fill="#EFE7DA"/>
+          <circle cx="250" cy="210" r="164" fill="none" stroke="#FAF6EF" stroke-width="2"/>
+          <g fill="#F6F1E8" stroke="#DCCFBA" stroke-width="1.5">
+            <use href="#gem" transform="translate(250 20)"/>
+            <use href="#gem" transform="translate(250 400)"/>
+            <use href="#gem" transform="translate(60 210) rotate(90)"/>
+            <use href="#gem" transform="translate(440 210) rotate(90)"/>
+          </g>
+        </svg>
         {{if image}}<img class="art-img" src="{{image}}" referrerpolicy="no-referrer">{{/if}}
       </div>
-    </div>
-    <div class="head-body">
-      {{if starText}}<div class="stars">{{starText}}</div>{{/if}}
-      <h1 class="title">{{name}}</h1>
-      {{if type}}<span class="type">{{type}}</span>{{/if}}
-      {{if flavor}}<p class="flavor">{{flavor}}</p>{{/if}}
-    </div>
-  </header>
 
-  {{if base.length}}
-  <section class="stats">
-    {{each base b}}
-    <div class="stat"><span class="stat-k">{{b.key}}</span><span class="stat-v">{{b.value}}</span></div>
-    {{/each}}
-    {{if obtain}}<div class="stat obtain"><span class="stat-k">获取途径</span><span class="stat-v">{{obtain}}</span></div>{{/if}}
-  </section>
-  {{/if}}
+      {{if skillName || skillDesc}}
+      <div class="card skill">
+        {{if skillName}}<div class="skill-name">{{skillName}}</div>{{/if}}
+        {{if skillDesc}}<div class="skill-body">{{@ skillDesc}}</div>{{/if}}
+      </div>
+      {{/if}}
+    </section>
 
-  {{if materials.length}}
-  <section class="sec">
-    <h2>升级材料</h2>
-    <div class="materials">
-      {{each materials m}}
-      <div class="mat">
-        <div class="mat-icon">
-          {{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}
-          {{if m.num}}<span class="mat-num">×{{m.num}}</span>{{/if}}
+    <section class="right">
+      <div class="title-row">
+        <h1 class="title">「{{if type}}{{type}}· {{/if}}{{name}}」</h1>
+        <span class="brand">观测枢</span>
+      </div>
+
+      <div class="meta">
+        {{if stars.length}}
+        <div class="stars">
+          {{each stars}}<svg viewBox="-16 -16 32 32"><path d="M0 -14 L4.1 -5.6 L13.3 -4.3 L6.7 2.1 L8.2 11.3 L0 7 L-8.2 11.3 L-6.7 2.1 L-13.3 -4.3 L-4.1 -5.6Z" fill="url(#gold)" stroke="#F4B21A" stroke-width="2" stroke-linejoin="round"/></svg>{{/each}}
         </div>
-        <span class="mat-name">{{m.name}}</span>
+        {{/if}}
+        {{if flavor}}<p class="flavor">{{flavor}}</p>{{/if}}
       </div>
-      {{/each}}
-    </div>
-  </section>
-  {{/if}}
 
-  {{if skillName || skillDesc}}
-  <section class="sec">
-    <h2>武器技能</h2>
-    {{if skillName}}<div class="skill-name">{{skillName}}</div>{{/if}}
-    {{if skillDesc}}<div class="skill-body">{{@ skillDesc}}</div>{{/if}}
-  </section>
-  {{/if}}
-
-  {{if characters.length}}
-  <section class="sec">
-    <h2>推荐角色</h2>
-    <div class="chars">
-      {{each characters c}}
-      <div class="char">
-        <div class="char-avatar">{{if c.img}}<img src="{{c.img}}" referrerpolicy="no-referrer">{{/if}}</div>
-        <span class="char-name">{{c.name}}</span>
+      {{if base.length || obtain}}
+      <div class="stats">
+        {{each base b}}
+        <div class="stat"><span class="stat-k">{{b.key}}:</span><span class="stat-v">{{b.value}}</span></div>
+        {{/each}}
+        {{if obtain}}<div class="stat{{if obtainWide}} wide{{/if}}"><span class="stat-k">获取途径:</span><span class="stat-v">{{obtain}}</span></div>{{/if}}
       </div>
-      {{/each}}
-    </div>
-  </section>
-  {{/if}}
+      {{/if}}
+
+      {{if materials.length}}
+      <div class="card block">
+        <h2>升级材料{{if days}}（{{days}}）{{/if}}</h2>
+        <div class="grid">
+          {{each materials m}}
+          <div class="tile r{{m.rarity || 1}}">
+            {{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}
+            {{if m.num}}<span class="num">{{m.num}}</span>{{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+
+      <div class="card block">
+        <h2>推荐角色</h2>
+        <div class="grid">
+          {{each characters c}}
+          <div>
+            <div class="tile char">{{if c.img}}<img src="{{c.img}}" referrerpolicy="no-referrer">{{/if}}</div>
+            <span class="char-name">{{c.name}}</span>
+          </div>
+          {{/each}}
+          {{each blanks}}<div class="tile blank"><i></i><i></i><i></i></div>{{/each}}
+        </div>
+      </div>
+    </section>
+  </div>
 
   <footer class="foot">
     <span>数据来源：米游社观测枢，内容版权归米哈游所有</span>

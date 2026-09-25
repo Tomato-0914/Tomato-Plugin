@@ -75,14 +75,16 @@ export class ObcGenshin extends plugin {
   }
 
   async querySuffix () {
-    return this.query(this.e.msg.replace(/^#(原神)?/, '').replace(/\s*图鉴$/, ''))
+    if (/^#(强制)?更新图鉴$/.test(this.e.msg)) return false
+    return this.query(this.e.msg.replace(/^#(原神)?/, '').replace(/\s*图鉴$/, ''), { loose: true })
   }
 
   async queryBare () {
     return this.query(this.e.msg.replace(/^#/, ''), { bare: true })
   }
 
-  async query (q, { bare = false } = {}) {
+  /** bare：#名称；loose：#名称图鉴。两者没命中都放行给其他插件 */
+  async query (q, { bare = false, loose = false } = {}) {
     q = String(q).trim()
     if (!q || q.length > 30) return false
 
@@ -109,6 +111,7 @@ export class ObcGenshin extends plugin {
     if (res.type === 'multi') {
       return this.reply(`「${q}」对应多个条目，写完整一点：\n${res.list.map(x => x.title).join('、')}`)
     }
+    if (loose) return false
     if (res.suggest.length) {
       return this.reply(`没找到「${q}」，你要找的是不是：${res.suggest.map(x => x.title).join('、')}`)
     }

@@ -19,8 +19,10 @@ function parseStatLines (raw) {
   for (const line of text.split('\n')) {
     const t = line.trim()
     if (!t) continue
-    const m = t.match(/^([^:：]{1,12})[:：]\s*(.+)$/)
-    if (m) out.push({ key: STAT_LABEL[m[1].trim()] || m[1].trim(), value: m[2].trim() })
+    const m = t.match(/^([^:：]{1,16})[:：]\s*(.+)$/)
+    if (!m || m[1].includes('未突破')) continue
+    const key = m[1].replace(/[（(]突破后[）)]/, '').trim()
+    out.push({ key: STAT_LABEL[key] || key, value: m[2].trim() })
   }
   return out
 }
@@ -60,6 +62,54 @@ function parseSkill (html) {
   return { name, desc, flavor, obtain }
 }
 
+const FIXED_RARITY = { 摩拉: 3, 精锻用魔矿: 3, 精锻用良矿: 2, 精锻用杂矿: 1 }
+const RUN_START = [2, 2, 1]
+
+function sameSeries (a, b) {
+  let i = 0
+  while (i < a.length && a[i] === b[i]) i++
+  let j = 0
+  while (j < a.length && a[a.length - 1 - j] === b[b.length - 1 - j]) j++
+  return i >= 2 || j >= 2
+}
+
+/** 按材料系列推断稀有度：突破素材 2★ 起，精英怪素材 2★ 起，普通怪素材 1★ 起 */
+function tagRarity (mats) {
+  let run = -1
+  let pos = 0
+  let prev = ''
+  for (const m of mats) {
+    if (FIXED_RARITY[m.name]) {
+      m.rarity = FIXED_RARITY[m.name]
+      prev = ''
+      continue
+    }
+    if (prev && sameSeries(prev, m.name)) pos++
+    else {
+      run++
+      pos = 0
+    }
+    m.rarity = Math.min(5, (RUN_START[run] ?? 1) + pos)
+    prev = m.name
+  }
+  return mats
+}
+
+function formatNum (n) {
+  const t = String(n ?? '').trim()
+  const v = Number(t)
+  if (!t || !Number.isFinite(v)) return t
+  return v >= 10000 ? `${Math.round(v / 10000)}万` : String(v)
+}
+
+/** 按突破材料名称匹配秘境开放日，配置见 weapon.domainDays */
+export function materialDays (mats = [], table = {}) {
+  for (const [days, series] of Object.entries(table || {})) {
+    if ((series || []).some(k => k && mats.some(m => m.name.includes(k)))) return days
+  }
+  return ''
+}
+
 /** 升级材料：取材料最多的一组（通常是 1 级那组全集，含魔矿 / 摩拉） */
 function extractMaterials (html) {
   const blocks = [...String(html ?? '').matchAll(/<div class="materials">([\s\S]*?)<\/div>/g)].map(m => m[1])
@@ -67,9 +117,9 @@ function extractMaterials (html) {
   const out = []
   const re = /<img[^>]*src="([^"]+)"[^>]*>\s*<span class="mat-name">([^<]+)<\/span>\s*(?:<span class="mat-num">([^<]+)<\/span>)?/g
   for (const m of best.matchAll(re)) {
-    out.push({ img: m[1], name: decode(m[2]).trim(), num: (m[3] ? decode(m[3]).replace(/^×/, '') : '').trim() })
+    out.push({ img: m[1], name: decode(m[2]).trim(), num: formatNum(m[3] ? decode(m[3]).replace(/^×/, '') : '') })
   }
-  return out
+  return tagRarity(out)
 }
 
 /** 推荐角色：从 custom-entry-wrapper 里取头像和名字 */
@@ -134,8 +184,12 @@ export function extractNewWeapon (page) {
     image: page?.icon_url || '',
     base: [],
     skillName: '',
+    skillDesc: '',
     skillHtml: '',
-    obtain: ''
+    flavor: '',
+    obtain: '',
+    materials: [],
+    characters: []
   }
   let isWeapon = false
   for (const m of Array.isArray(page?.modules) ? page.modules : []) {
@@ -173,8 +227,12 @@ export function extractOldWeapon (content) {
     image: content?.icon || '',
     base: [],
     skillName: '',
+    skillDesc: '',
     skillHtml: '',
-    obtain: ''
+    flavor: '',
+    obtain: '',
+    materials: [],
+    characters: []
   }
   let found = false
   for (const m of html.matchAll(/data-data="([^"]+)"/g)) {
@@ -195,8 +253,22 @@ export function extractOldWeapon (content) {
         w.skillName = skillName(w.skillHtml)
         if (d.proceed) w.obtain = strip(d.proceed).trim()
       } else if (b.partKey === 'value') {
-        const first = d.data?.[0]
-        if (first?.basic) w.base = parseStatLines(first.basic)
+        const levels = Array.isArray(d.data) ? d.data : []
+        const top = levels.filter(l => l?.basic).pop()
+        if (top) w.base = parseStatLines(top.basic)
+        const full = levels.map(l => (Array.isArray(l?.material) ? l.material : [])).sort((a, b) => b.length - a.length)[0] || []
+        const mats = full
+          .filter(x => x?.name)
+          .map(x => ({ img: x.icon || '', name: decode(x.name).trim(), num: formatNum(x.num) }))
+        if (mats.length) w.materials = tagRarity(mats)
+      }
+    }
+    for (const b of arr) {
+      if (b.tmplKey !== 'illustration' || !String(b.data?.title ?? '').includes('角色')) continue
+      for (const g of Array.isArray(b.data?.data) ? b.data.data : []) {
+        for (const x of Array.isArray(g?.data) ? g.data : []) {
+          if (x?.name && x?.image && !w.characters.some(c => c.name === x.name)) w.characters.push({ name: decode(x.name).trim(), img: x.image })
+        }
       }
     }
   }
