@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --paper: #ECE5D8;
+    --paper-deep: #E2D8C6;
+    --ink: #3B4255;
+    --ink-soft: #7A7465;
+    --slate: #2F3648;
+    --gold: #C9A66B;
+    --line: #D5C8B0;
+    --serif: "Noto Serif CJK SC", "Source Han Serif SC", "Source Han Serif CN", "Songti SC", serif;
+    --sans: "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); }
+  body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.75; }
+  #container { width: {{width}}px; background: var(--paper); padding-bottom: 20px; overflow: hidden; }
+
+  /* 顶部：唯一的“重”元素，其余保持安静 */
+  .head { --accent: var(--gold); position: relative; background: var(--slate); color: #F2EADB; padding: 34px 40px 30px; display: flex; align-items: center; gap: 24px; border-bottom: 4px solid var(--accent); }
+  .frame { position: absolute; inset: 12px; border: 1px solid rgba(201, 166, 107, .6); pointer-events: none; }
+  .frame i { position: absolute; width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg); }
+  .frame i:nth-child(1) { left: -5px; top: -5px; }
+  .frame i:nth-child(2) { right: -5px; top: -5px; }
+  .frame i:nth-child(3) { left: -5px; bottom: -5px; }
+  .frame i:nth-child(4) { right: -5px; bottom: -5px; }
+  .icon { width: 104px; height: 104px; flex: none; object-fit: cover; border-radius: 6px; border: 1px solid var(--accent); background: #3C4459; }
+  .stars { color: #FFCC32; font-size: 17px; letter-spacing: 3px; line-height: 1; margin-bottom: 8px; }
+  .title { font-family: var(--serif); font-weight: 700; font-size: 42px; line-height: 1.2; letter-spacing: 3px; margin: 0; }
+  .sub { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .crumb { font-size: 14px; color: var(--gold); letter-spacing: 1px; margin-right: 6px; }
+  .chip { font-size: 13px; line-height: 22px; padding: 0 10px; border: 1px solid rgba(201, 166, 107, .45); border-radius: 11px; color: #E9DFCB; }
+  .chip.el { border-color: var(--accent); color: var(--accent); }
+
+  .summary { margin: 22px 36px 0; padding: 12px 16px; background: var(--paper-deep); border-left: 3px solid var(--gold); font-size: 14.5px; }
+
+  .sec { margin: 26px 36px 0; }
+  .sec h2 { font-family: var(--serif); font-size: 22px; font-weight: 700; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+  .sec h2::before { content: ""; width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); flex: none; }
+
+  /* 观测枢正文：统一重新上色，不依赖它自己的样式表 */
+  .body { overflow-wrap: anywhere; }
+  .body img { max-width: 100%; height: auto; vertical-align: middle; }
+  .body p { margin: 6px 0; }
+  .body a { color: inherit; text-decoration: none; }
+  .body ul, .body ol { padding-left: 22px; margin: 6px 0; }
+  .body h1, .body h2, .body h3, .body h4 { font-family: var(--serif); color: var(--ink); margin: 16px 0 8px; line-height: 1.4; }
+  .body h1, .body h2 { font-size: 19px; }
+  .body h3, .body h4 { font-size: 17px; }
+  .body table { width: 100% !important; border-collapse: collapse; margin: 10px 0; font-size: 14px; background: #F3EDE2; table-layout: auto; }
+  .body th, .body td { border: 1px solid var(--line); padding: 6px 9px; vertical-align: middle; }
+  .body th, .body thead td { background: var(--paper-deep); font-weight: 700; }
+  .body tr:nth-child(even) td { background: rgba(226, 216, 198, .35); }
+
+  /* 新版词条里的材料 chips（.materials/.mat） */
+  .body .materials { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .body .mat { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px 3px 6px; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 16px; }
+  .body .mat img { width: 26px; height: 26px; object-fit: contain; }
+  .body .mat-num { color: var(--ink-soft); }
+
+  .foot { margin: 30px 36px 0; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div id="container">
+  <header class="head"{{if accent}} style="--accent: {{accent}}"{{/if}}>
+    <div class="frame"><i></i><i></i><i></i><i></i></div>
+    {{if icon}}<img class="icon" src="{{icon}}" referrerpolicy="no-referrer">{{/if}}
+    <div>
+      {{if starText}}<div class="stars">{{starText}}</div>{{/if}}
+      <h1 class="title">{{title}}</h1>
+      <div class="sub">
+        {{if crumb}}<span class="crumb">{{crumb}}</span>{{/if}}
+        {{each chips c}}<span class="chip{{if c.accent}} el{{/if}}">{{c.text}}</span>{{/each}}
+      </div>
+    </div>
+  </header>
+
+  {{if summary}}<div class="summary">{{summary}}</div>{{/if}}
+
+  <main id="sections"></main>
+
+  <footer class="foot">
+    <span>数据来源：米游社观测枢，内容版权归米哈游所有</span>
+    <span>{{time}}</span>
+  </footer>
+</div>
+
+{{each sections sec i}}
+<template class="raw" data-name="{{sec.name}}">{{@ sec.html}}</template>
+{{/each}}
+
+<script>
+(function () {
+  var cfg = {{@ pageCfg}};
+  var out = document.getElementById('sections');
+  var bad = 'script,iframe,object,embed,link,meta,base,style,audio,video,source,form,noscript';
+
+  document.querySelectorAll('template.raw').forEach(function (tpl) {
+    var frag = tpl.content.cloneNode(true);
+    frag.querySelectorAll(bad).forEach(function (n) { n.remove(); });
+    (cfg.remove || []).forEach(function (sel) {
+      try { frag.querySelectorAll(sel).forEach(function (n) { n.remove(); }); } catch (e) {}
+    });
+
+    frag.querySelectorAll('*').forEach(function (el) {
+      Array.prototype.slice.call(el.attributes).forEach(function (a) {
+        if (/^on/i.test(a.name)) el.removeAttribute(a.name);
+      });
+    });
+
+    // 新版正文里图片可能藏在 <span class="custom-image-view" data-image-url> 里，没有内层 <img> 时补一个
+    frag.querySelectorAll('span.custom-image-view[data-image-url]').forEach(function (s) {
+      if (s.querySelector('img')) return;
+      var im = document.createElement('img');
+      im.setAttribute('src', s.getAttribute('data-image-url') || '');
+      s.appendChild(im);
+    });
+
+    frag.querySelectorAll('img').forEach(function (img) {
+      var lazy = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-image-url');
+      if (lazy && !img.getAttribute('src')) img.setAttribute('src', lazy);
+      img.removeAttribute('loading');
+      img.removeAttribute('srcset');
+      var src = (img.getAttribute('src') || '').trim();
+      if (src.indexOf('//') === 0) src = 'https:' + src;
+      if (!/^https?:\/\//i.test(src)) { img.remove(); return; }
+      if (cfg.imgProcess && src.indexOf('x-oss-process') < 0) {
+        try {
+          if ((cfg.imgHosts || []).indexOf(new URL(src).hostname) >= 0) {
+            src += (src.indexOf('?') < 0 ? '?' : '&') + 'x-oss-process=' + cfg.imgProcess;
+          }
+        } catch (e) {}
+      }
+      img.setAttribute('referrerpolicy', 'no-referrer');
+      img.addEventListener('error', function () { img.remove(); });
+      img.setAttribute('src', src);
+    });
+
+    var body = document.createElement('div');
+    body.className = 'body';
+    body.appendChild(frag);
+    if (!body.textContent.trim() && !body.querySelector('img')) return;
+
+    var sec = document.createElement('section');
+    sec.className = 'sec';
+    var name = tpl.getAttribute('data-name');
+    if (name) {
+      var h = document.createElement('h2');
+      h.textContent = name;
+      sec.appendChild(h);
+    }
+    sec.appendChild(body);
+    out.appendChild(sec);
+  });
+})();
+</script>
+</body>
+</html>

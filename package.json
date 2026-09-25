@@ -1,0 +1,8 @@
+{
+  "name": "obc-plugin",
+  "version": "0.1.0",
+  "description": "Yunzai 图鉴插件：实时拉取米游社观测枢数据并渲染",
+  "type": "module",
+  "private": true,
+  "license": "MIT"
+}

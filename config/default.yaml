@@ -1,0 +1,56 @@
+# 默认配置。要改的话复制一份为 config/config.yaml 再改，
+# 只写你想覆盖的项即可；本文件在插件升级时会被覆盖。
+
+# 插件优先级，数字越小越先响应（可以是负数，改完重启生效）
+# 默认 -10，会抢在逍遥、喵喵等插件前面接管“#xx图鉴”；不想接管就调大
+priority: -10
+
+# 为 true 时，#胡桃 这种不带“图鉴”二字的指令也会触发
+# 只在精确名称或别名命中时才响应，其余交给别的插件
+bareMatch: false
+
+# 首次生成（没有缓存）时先回一句“正在生成”
+renderTip: true
+
+# 图片张数超过这个值时改用合并转发
+forwardThreshold: 2
+
+api:
+  timeout: 15000      # 单次请求超时（毫秒）
+  indexTTL: 21600     # 目录缓存（秒），6 小时
+  detailTTL: 43200    # 详情缓存（秒），12 小时
+  # 内容 id 大于等于这个值走新版 hoyowiki 接口，否则走旧版 blackboard 接口
+  detailIdSplit: 500000
+
+games:
+  gs:
+    name: 原神
+    base: https://api-static.mihoyo.com/common/blackboard/ys_obc/v1
+    appSn: ys_obc
+    channelId: 189
+    # 新版词条接口（id >= detailIdSplit 的条目）
+    newBase: https://api-takumi.mihoyo.com/hoyowiki/genshin/wapi
+    # 同名条目出现在多个分类时，按这个顺序优先
+    categoryPriority: [角色, 武器, 圣遗物]
+
+render:
+  width: 760          # 图片宽度（像素）
+  quality: 90         # JPEG 质量
+  timeout: 60000      # 等待页面和图片加载的上限（毫秒）
+  pageHeight: 3500    # 超过这个高度会切成多张图
+  maxSections: 30
+  # 分段名包含这些字的整段跳过（新版词条按模块名，旧版按段名）
+  # 新版真实模块名：角色故事N / 配音展示 / 关联词条 / 角色CV 等
+  excludeSections: [角色故事, 配音, 语音, 关联词条]
+  # 渲染前从正文里删掉的元素（CSS 选择器）
+  removeSelectors:
+    - '[class*="voice"]'
+    - '[class*="-mobile"]'
+    - '[class*="__mobile"]'
+  # 让米游社 CDN 先缩图再传过来，省带宽；图片显示不出来就改成 ''
+  imageProcess: image/resize,w_720/quality,q_85/format,webp
+  imageHosts:
+    - upload-bbs.miyoushe.com
+    - upload-bbs.mihoyo.com
+    - act-upload.mihoyo.com
+    - uploadstatic.mihoyo.com
