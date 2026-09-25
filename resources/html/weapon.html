@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --paper: #EBE3D0;
+    --paper-light: #F6EEDD;
+    --paper-deep: #E3D7BD;
+    --ink: #4A4438;
+    --ink-soft: #8A816E;
+    --slate: #2F3648;
+    --gold: #C9A66B;
+    --gold-deep: #A9824A;
+    --line: #D8C9AC;
+    --serif: "Noto Serif CJK SC", "Source Han Serif SC", "Source Han Serif CN", "Songti SC", serif;
+    --sans: "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); }
+  body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.7; }
+  #container { width: {{width}}px; background: var(--paper); padding-bottom: 24px; overflow: hidden; }
+
+  /* 顶部：左侧圆形立绘法阵 + 右侧标题 */
+  .head { display: flex; align-items: center; gap: 28px; padding: 30px 32px 26px; background: linear-gradient(180deg, #F6EEDD 0%, #ECE2CD 100%); border-bottom: 3px solid var(--gold); }
+  .art { position: relative; width: 172px; height: 172px; flex: none; }
+  .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--gold); background: radial-gradient(circle at 50% 36%, #FBF5E7 0%, #E9DCBF 55%, #DCC89E 100%); box-shadow: 0 0 0 7px rgba(201, 166, 107, .16), inset 0 0 26px rgba(169, 130, 74, .28); }
+  .ring::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; border: 1px solid rgba(201, 166, 107, .6); pointer-events: none; }
+  .art-img { position: absolute; inset: 20px; width: calc(100% - 40px); height: calc(100% - 40px); object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .3)); }
+  .head-body { flex: 1; min-width: 0; }
+  .stars { color: #E0A030; font-size: 17px; letter-spacing: 4px; line-height: 1; }
+  .title { font-family: var(--serif); font-size: 34px; font-weight: 700; letter-spacing: 2px; line-height: 1.25; margin: 9px 0 0; }
+  .type { display: inline-block; margin-top: 12px; font-size: 13px; line-height: 24px; padding: 0 13px; border: 1px solid rgba(201, 166, 107, .55); border-radius: 12px; color: var(--gold-deep); background: rgba(201, 166, 107, .09); }
+  .flavor { margin: 12px 0 0; font-size: 14px; line-height: 1.7; color: var(--ink-soft); }
+
+  /* 属性胶囊 */
+  .stats { display: flex; gap: 12px; margin: 22px 32px 0; }
+  .stat { flex: 1; min-width: 0; background: var(--paper-light); border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 10px; padding: 10px 12px 11px; text-align: center; }
+  .stat-k { display: block; font-size: 12px; color: var(--ink-soft); letter-spacing: 1px; }
+  .stat-v { display: block; font-family: var(--serif); font-size: 21px; font-weight: 700; color: var(--slate); margin-top: 2px; line-height: 1.3; }
+  .stat.obtain .stat-v { font-size: 14px; font-weight: 400; color: var(--ink); }
+
+  .sec { margin: 26px 32px 0; }
+  .sec h2 { font-family: var(--serif); font-size: 20px; font-weight: 700; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .sec h2::before { content: ""; width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg); flex: none; }
+
+  /* 升级材料 */
+  .materials { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px 10px; }
+  .mat { text-align: center; }
+  .mat-icon { position: relative; width: 100%; max-width: 84px; aspect-ratio: 1; margin: 0 auto; border-radius: 12px; background: linear-gradient(180deg, #F8F1E2 0%, #E8DBBE 100%); border: 1px solid var(--line); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .55); display: flex; align-items: center; justify-content: center; }
+  .mat-icon img { width: 72%; height: 72%; object-fit: contain; }
+  .mat-num { position: absolute; right: -5px; bottom: -5px; min-width: 20px; padding: 0 6px; line-height: 19px; border-radius: 10px; background: var(--slate); color: #F2EADB; font-size: 11px; text-align: center; border: 1px solid rgba(255, 255, 255, .35); }
+  .mat-name { display: block; margin-top: 7px; font-size: 11px; line-height: 1.35; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* 武器技能 */
+  .skill-name { font-family: var(--serif); font-size: 20px; font-weight: 700; color: var(--gold-deep); letter-spacing: 1px; }
+  .skill-body { margin-top: 8px; overflow-wrap: anywhere; }
+  .skill-body p { margin: 6px 0; }
+  .skill-body img { max-width: 100%; height: auto; vertical-align: middle; }
+
+  /* 推荐角色 */
+  .chars { display: flex; flex-wrap: wrap; gap: 18px 16px; }
+  .char { width: 84px; text-align: center; }
+  .char-avatar { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; margin: 0 auto; background: var(--paper-deep); border: 2px solid var(--gold); }
+  .char-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .char-name { display: block; margin-top: 7px; font-size: 12px; line-height: 1.3; color: var(--ink); }
+
+  .foot { margin: 26px 32px 0; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div id="container">
+  <header class="head">
+    <div class="art">
+      <div class="ring">
+        {{if image}}<img class="art-img" src="{{image}}" referrerpolicy="no-referrer">{{/if}}
+      </div>
+    </div>
+    <div class="head-body">
+      {{if starText}}<div class="stars">{{starText}}</div>{{/if}}
+      <h1 class="title">{{name}}</h1>
+      {{if type}}<span class="type">{{type}}</span>{{/if}}
+      {{if flavor}}<p class="flavor">{{flavor}}</p>{{/if}}
+    </div>
+  </header>
+
+  {{if base.length}}
+  <section class="stats">
+    {{each base b}}
+    <div class="stat"><span class="stat-k">{{b.key}}</span><span class="stat-v">{{b.value}}</span></div>
+    {{/each}}
+    {{if obtain}}<div class="stat obtain"><span class="stat-k">获取途径</span><span class="stat-v">{{obtain}}</span></div>{{/if}}
+  </section>
+  {{/if}}
+
+  {{if materials.length}}
+  <section class="sec">
+    <h2>升级材料</h2>
+    <div class="materials">
+      {{each materials m}}
+      <div class="mat">
+        <div class="mat-icon">
+          {{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}
+          {{if m.num}}<span class="mat-num">×{{m.num}}</span>{{/if}}
+        </div>
+        <span class="mat-name">{{m.name}}</span>
+      </div>
+      {{/each}}
+    </div>
+  </section>
+  {{/if}}
+
+  {{if skillName || skillDesc}}
+  <section class="sec">
+    <h2>武器技能</h2>
+    {{if skillName}}<div class="skill-name">{{skillName}}</div>{{/if}}
+    {{if skillDesc}}<div class="skill-body">{{@ skillDesc}}</div>{{/if}}
+  </section>
+  {{/if}}
+
+  {{if characters.length}}
+  <section class="sec">
+    <h2>推荐角色</h2>
+    <div class="chars">
+      {{each characters c}}
+      <div class="char">
+        <div class="char-avatar">{{if c.img}}<img src="{{c.img}}" referrerpolicy="no-referrer">{{/if}}</div>
+        <span class="char-name">{{c.name}}</span>
+      </div>
+      {{/each}}
+    </div>
+  </section>
+  {{/if}}
+
+  <footer class="foot">
+    <span>数据来源：米游社观测枢，内容版权归米哈游所有</span>
+    <span>{{time}}</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var cfg = {{@ pageCfg}};
+  document.querySelectorAll('img').forEach(function (img) {
+    var lazy = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-image-url');
+    if (lazy && !img.getAttribute('src')) img.setAttribute('src', lazy);
+    img.removeAttribute('loading');
+    img.removeAttribute('srcset');
+    var src = (img.getAttribute('src') || '').trim();
+    if (src.indexOf('//') === 0) src = 'https:' + src;
+    if (!/^https?:\/\//i.test(src)) { img.remove(); return; }
+    if (cfg.imgProcess && src.indexOf('x-oss-process') < 0) {
+      try {
+        if ((cfg.imgHosts || []).indexOf(new URL(src).hostname) >= 0) {
+          src += (src.indexOf('?') < 0 ? '?' : '&') + 'x-oss-process=' + cfg.imgProcess;
+        }
+      } catch (e) {}
+    }
+    img.setAttribute('referrerpolicy', 'no-referrer');
+    img.addEventListener('error', function () { img.remove(); });
+    img.setAttribute('src', src);
+  });
+})();
+</script>
+</body>
+</html>

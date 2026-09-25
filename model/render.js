@@ -4,8 +4,10 @@ import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { getConfig, pluginRoot, pluginName, dataRoot, ensureDir } from './config.js'
 import { sanitizeHtml } from './sanitize.js'
+import { extractWeapon } from './weapon.js'
 
 const TPL = path.join(pluginRoot, 'resources', 'html', 'entry.html')
+const WTPL = path.join(pluginRoot, 'resources', 'html', 'weapon.html')
 const md5 = s => crypto.createHash('md5').update(s).digest('hex')
 
 let renderer = null
@@ -106,7 +108,7 @@ export function clearRendered (gameKey) {
   fs.rmSync(path.join(dataRoot, gameKey, 'render'), { recursive: true, force: true })
 }
 
-async function doRender (gameKey, entry, view, r) {
+async function doRender (gameKey, entry, view, r, tplFile = TPL) {
   const rd = await getRenderer()
   const pageCfg = JSON.stringify({
     remove: r.removeSelectors || [],
@@ -116,11 +118,11 @@ async function doRender (gameKey, entry, view, r) {
 
   // 注意：别用 path / resPath 这类字段名，Yunzai 渲染器会拿去当保存路径
   const data = {
-    tplFile: TPL,
+    tplFile,
     saveId: `${gameKey}_${entry.id}`,
     imgType: 'jpeg',
     quality: r.quality || 90,
-    multiPage: true,
+    multiPage: tplFile === TPL,
     multiPageHeight: r.pageHeight || 3500,
     pageGotoParams: { waitUntil: 'networkidle0', timeout: r.timeout || 60000 },
     width: r.width || 760,
@@ -144,21 +146,34 @@ async function doRender (gameKey, entry, view, r) {
  */
 export async function renderEntry (gameKey, entry, content, { force = false, onMiss } = {}) {
   const r = getConfig().render || {}
-  const sections = pickSections(content, r)
-  if (!sections.length) throw new Error('这个条目没有可显示的正文')
+  const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
 
-  const icon = [entry.icon, content.icon].find(u => typeof u === 'string' && /^https?:\/\//.test(u)) || ''
-  const view = {
-    title: content.title || entry.title,
-    summary: typeof content.summary === 'string' ? content.summary.trim() : '',
-    crumb: entry.path.filter(p => p !== '图鉴').join(' / '),
-    icon,
-    ...headerTags(entry.tags),
-    sections,
-    entryId: entry.id
+  let view
+  let tplFile = TPL
+  if (weapon) {
+    tplFile = WTPL
+    view = {
+      ...weapon,
+      starText: '★'.repeat(weapon.rate || 0),
+      time: '',
+      entryId: entry.id
+    }
+  } else {
+    const sections = pickSections(content, r)
+    if (!sections.length) throw new Error('这个条目没有可显示的正文')
+    const icon = [entry.icon, content.icon].find(u => typeof u === 'string' && /^https?:\/\//.test(u)) || ''
+    view = {
+      title: content.title || entry.title,
+      summary: typeof content.summary === 'string' ? content.summary.trim() : '',
+      crumb: entry.path.filter(p => p !== '图鉴').join(' / '),
+      icon,
+      ...headerTags(entry.tags),
+      sections,
+      entryId: entry.id
+    }
   }
 
-  const tpl = fs.readFileSync(TPL, 'utf8')
+  const tpl = fs.readFileSync(tplFile, 'utf8')
   const hash = md5(JSON.stringify([tpl, r, view])).slice(0, 12)
   view.time = new Date().toLocaleString('zh-CN', { hour12: false })
   const dir = path.join(dataRoot, gameKey, 'render', entry.id)
@@ -173,7 +188,7 @@ export async function renderEntry (gameKey, entry, content, { force = false, onM
 
   const job = (async () => {
     onMiss?.()
-    const bufs = await enqueue(() => doRender(gameKey, entry, view, r))
+    const bufs = await enqueue(() => doRender(gameKey, entry, view, r, tplFile))
     if (!bufs.length) throw new Error('渲染器没有返回图片，看一下后台日志')
     saveRendered(dir, hash, bufs)
     return bufs

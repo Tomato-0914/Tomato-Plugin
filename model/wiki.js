@@ -1,4 +1,5 @@
 import { sanitizeHtml } from './sanitize.js'
+import { extractNewWeapon } from './weapon.js'
 
 /**
  * 新版观测枢（hoyowiki）词条解析。
@@ -102,8 +103,8 @@ function renderList (list, opts = {}) {
     if (tab && !/^页签\d*$/.test(tab)) frags.push(`<h3>${esc(tab)}</h3>`)
     const ttl = String(it.title ?? '').trim()
     if (ttl && ttl !== tab && ttl !== opts.title) frags.push(`<p><strong>${esc(ttl)}</strong></p>`)
-    if (it.rich_text) frags.push(clean(it.rich_text))
-    if (it.desc) frags.push(clean(it.desc))
+    if (typeof it.rich_text === 'string') frags.push(clean(it.rich_text))
+    if (typeof it.desc === 'string') frags.push(clean(it.desc))
     for (const k of LIST_IMG_KEYS) if (isUrl(it[k])) frags.push(img(it[k]))
     if (isUrl(it.avatar_pc)) frags.push(img(it.avatar_pc))
     else if (isUrl(it.avatar_m)) frags.push(img(it.avatar_m))
@@ -124,9 +125,9 @@ function dataToHtml (d, opts = {}) {
   if (typeof d !== 'object') return esc(String(d))
 
   const out = []
-  if (d.rich_text) out.push(clean(d.rich_text))
-  else if (d.desc) out.push(clean(d.desc))
-  else if (d.story) out.push(clean(d.story))
+  if (typeof d.rich_text === 'string') out.push(clean(d.rich_text))
+  else if (typeof d.desc === 'string') out.push(clean(d.desc))
+  else if (typeof d.story === 'string') out.push(clean(d.story))
 
   for (const t of Array.isArray(d.tables) ? d.tables : []) out.push(renderTable(t))
   if (Array.isArray(d.table)) out.push(renderTable({ table: d.table }))
@@ -141,7 +142,7 @@ function dataToHtml (d, opts = {}) {
 
   // 纯字段兜底（武器 banner、食物、圣遗物单件等）：名称/星级/类别
   const plain = []
-  const name = String(d.name ?? '').trim()
+  const name = typeof d.name === 'string' ? d.name.trim() : ''
   if (name && name !== opts.title && !d.rich_text) plain.push(`<strong>${esc(name)}</strong>`)
   if (typeof d.title === 'string' && d.title.trim() && d.title.trim() !== opts.title) plain.push(esc(d.title))
   if (d.star) plain.push('★'.repeat(Number(d.star) || 0))
@@ -175,10 +176,12 @@ export function modulesToContents (page) {
     contents.push({ name: secName, text: html })
   }
 
+  const weapon = extractNewWeapon(page)
   return {
     title,
     summary: desc && desc !== title ? desc : '',
     icon: page?.icon_url || page?.header_img_url || '',
-    contents
+    contents,
+    ...(weapon ? { weapon } : {})
   }
 }
