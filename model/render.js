@@ -4,9 +4,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { getConfig, pluginRoot, pluginName } from './config.js'
 import { sanitizeHtml } from './sanitize.js'
 import { extractWeapon, materialDays } from './weapon.js'
+import { buildCard } from './card.js'
 
 const TPL = path.join(pluginRoot, 'resources', 'html', 'entry.html')
 const WTPL = path.join(pluginRoot, 'resources', 'html', 'weapon.html')
+const CTPL = path.join(pluginRoot, 'resources', 'html', 'card.html')
 
 let renderer = null
 async function getRenderer () {
@@ -137,6 +139,7 @@ export async function renderEntry (gameKey, entry, content, { onStart } = {}) {
   const cfg = getConfig()
   const r = cfg.render || {}
   const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
+  const card = weapon ? null : buildCard(entry, content)
 
   let view
   let tplFile = TPL
@@ -154,6 +157,18 @@ export async function renderEntry (gameKey, entry, content, { onStart } = {}) {
       days: materialDays(weapon.materials, wc.domainDays),
       obtainWide: String(weapon.obtain || '').length > 6,
       blanks: Array.from({ length: Math.max(0, 6 - chars.length) }, (_, i) => i),
+      time: '',
+      entryId: entry.id
+    }
+  } else if (card) {
+    tplFile = CTPL
+    const cc = cfg.card || {}
+    view = {
+      ...card,
+      stars: Array.from({ length: Math.min(card.stars || 0, 5) }, (_, i) => i),
+      summary: card.summary || '',
+      width: cc.width || 1280,
+      height: cc.height || 800,
       time: '',
       entryId: entry.id
     }
