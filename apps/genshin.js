@@ -13,14 +13,14 @@ fs.rmSync(path.join(dataRoot, GAME, 'render'), { recursive: true, force: true })
 
 const HELP = [
   '【观测枢图鉴 · 原神】',
-  '#胡桃图鉴 或 #图鉴胡桃：查询条目',
+  '#护摩之杖图鉴 或 #图鉴护摩之杖：查询条目（角色请用喵喵插件）',
   '#武器图鉴：列出某个分类下的全部条目',
   '#图鉴分类：看看有哪些分类',
   '#图鉴更新：重新拉取目录（主人）',
   '#图鉴强制更新：清空全部数据缓存（主人）',
   '#图鉴清除缓存：清空全部条目详情缓存（主人）',
-  '#图鉴清除缓存胡桃：重新拉取该条目并生成（主人）',
-  '#图鉴调试胡桃：导出原始数据（主人）'
+  '#图鉴清除缓存护摩之杖：重新拉取该条目并生成（主人）',
+  '#图鉴调试护摩之杖：导出原始数据（主人）'
 ].join('\n')
 
 async function sendMany (e, msgs, title = '') {
@@ -35,6 +35,9 @@ async function sendMany (e, msgs, title = '') {
   for (const m of msgs) await e.reply(m)
   return true
 }
+
+/** 属于 skipCategories 的条目不响应，交给其他插件 */
+const skipped = entry => (getConfig().skipCategories || []).some(c => entry.path.includes(c))
 
 function chunkText (text, size = 800) {
   const out = []
@@ -105,19 +108,24 @@ export class ObcGenshin extends plugin {
     const game = getConfig().games[GAME]
     const res = matchEntry(q, index, { aliases: getAliases(GAME), priority: game.categoryPriority || [] })
 
+    if (res.type === 'hit' && skipped(res.entry)) return false
     if (bare) return res.type === 'hit' && res.via !== 'partial' ? this.sendEntry(res.entry) : false
     if (res.type === 'hit') return this.sendEntry(res.entry)
 
-    const cat = listCategory(q, index)
+    const cat = listCategory(q, index.filter(e => !skipped(e)))
     if (cat) {
       const text = `「${q}」共 ${cat.length} 条，发送 #名称图鉴 查看：\n${cat.join('、')}`
       return sendMany(this.e, chunkText(text), q)
     }
 
     if (res.type === 'multi') {
+      res.list = res.list.filter(e => !skipped(e))
+      if (!res.list.length) return false
+      if (res.list.length === 1) return this.sendEntry(res.list[0])
       return this.reply(`「${q}」对应多个条目，写完整一点：\n${res.list.map(x => x.title).join('、')}`)
     }
     if (loose) return false
+    res.suggest = res.suggest.filter(e => !skipped(e))
     if (res.suggest.length) {
       return this.reply(`没找到「${q}」，你要找的是不是：${res.suggest.map(x => x.title).join('、')}`)
     }
@@ -125,6 +133,7 @@ export class ObcGenshin extends plugin {
   }
 
   async sendEntry (entry, force = false) {
+    if (skipped(entry)) return false
     let content
     try {
       content = await source.getDetail(entry.id, force)
