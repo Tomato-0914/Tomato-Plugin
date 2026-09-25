@@ -217,7 +217,8 @@ export class ObcSource {
     return modulesToContents(data.page)
   }
 
-  clearDetails () {
-    fs.rmSync(path.join(this.dir, 'detail'), { recursive: true, force: true })
+  /** 清除详情缓存：传 id 只清该条目，否则全部清空 */
+  clearDetails (id) {
+    fs.rmSync(id ? path.join(this.dir, 'detail', `${id}.json`) : path.join(this.dir, 'detail'), { recursive: true, force: true })
   }
 }

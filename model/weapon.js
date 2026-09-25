@@ -57,6 +57,11 @@ function parseSkill (html) {
     if (hr < 0) rest = rest.split(/<\/strong>/i)[0]
     desc = `<p>${rest.replace(/<\/?strong[^>]*>/gi, '').replace(/^\s*·\s*/, '')}`
       .replace(/<p[^>]*>(\s|&nbsp;|<br[^>]*>)*<\/p>/gi, '')
+      .replace(/(<br[^>]*>\s*){2,}/gi, '<br>')
+      .replace(/<span\b[^>]*style="([^"]*)"[^>]*>/gi, (_, st) => {
+        const c = st.match(/color\s*:\s*([^;]+)/i)?.[1]?.replace(/\s+/g, '') || ''
+        return c && !/^(#000(000)?|rgba?\(0,0,0(,1)?\)|black)$/i.test(c) ? '<span class="hl">' : '<span>'
+      })
       .trim()
   }
   const tail = hr >= 0 ? h.slice(hr).replace(/^<hr[^>]*>/i, '') : (h.split(/<\/strong>/i)[1] || '')

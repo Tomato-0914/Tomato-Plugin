@@ -15,6 +15,8 @@ const HELP = [
   '#图鉴分类：看看有哪些分类',
   '#图鉴更新：重新拉取目录（主人）',
   '#图鉴强制更新：清空全部缓存（主人）',
+  '#图鉴清除缓存：清空已生成的图片（主人）',
+  '#图鉴清除缓存胡桃：清掉该条目缓存并重新生成（主人）',
   '#图鉴调试胡桃：导出原始数据（主人）'
 ].join('\n')
 
@@ -52,6 +54,7 @@ export class ObcGenshin extends plugin {
       { reg: '^#(原神)?图鉴(帮助|help)?$', fnc: 'help' },
       { reg: '^#(原神)?图鉴(强制)?更新$', fnc: 'update', permission: 'master' },
       { reg: '^#(原神)?图鉴调试\\s*\\S.*$', fnc: 'debug', permission: 'master' },
+      { reg: '^#(原神)?图鉴清除缓存.*$', fnc: 'clearCache', permission: 'master' },
       { reg: '^#(原神)?图鉴(分类|目录)$', fnc: 'categories' },
       { reg: '^#(原神)?图鉴\\s*\\S.*$', fnc: 'queryPrefix' },
       { reg: '^#.+图鉴$', fnc: 'querySuffix' }
@@ -118,10 +121,10 @@ export class ObcGenshin extends plugin {
     return this.reply(`没找到「${q}」。发送 #图鉴分类 可以看有哪些分类`)
   }
 
-  async sendEntry (entry) {
+  async sendEntry (entry, force = false) {
     let content
     try {
-      content = await source.getDetail(entry.id)
+      content = await source.getDetail(entry.id, force)
     } catch (err) {
       logger.error(err)
       return this.reply(`获取「${entry.title}」失败：${err.message}`)
@@ -130,6 +133,7 @@ export class ObcGenshin extends plugin {
     let imgs
     try {
       imgs = await renderEntry(GAME, entry, content, {
+        force,
         onMiss: () => getConfig().renderTip && this.reply(`正在生成「${entry.title}」，第一次会慢一点…`)
       })
     } catch (err) {
@@ -151,6 +155,27 @@ export class ObcGenshin extends plugin {
     } catch (err) {
       return this.reply(`更新失败：${err.message}`)
     }
+  }
+
+  /** 不带名称清空全部图片缓存；带名称清掉该条目的详情和图片缓存后重新生成 */
+  async clearCache () {
+    const q = this.e.msg.replace(/^#(原神)?图鉴清除缓存\s*/, '').trim()
+    if (!q) {
+      clearRendered(GAME)
+      return this.reply('已清空全部图片缓存，下次查询时重新生成')
+    }
+    let index
+    try {
+      index = await source.getIndex()
+    } catch (err) {
+      return this.reply(`目录拉取失败：${err.message}`)
+    }
+    const game = getConfig().games[GAME]
+    const res = matchEntry(q, index, { aliases: getAliases(GAME), priority: game.categoryPriority || [] })
+    if (res.type !== 'hit') return this.reply(`没找到唯一条目「${q}」`)
+    source.clearDetails(res.entry.id)
+    clearRendered(GAME, res.entry.id)
+    return this.sendEntry(res.entry, true)
   }
 
   async categories () {
