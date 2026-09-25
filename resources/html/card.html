@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #F3F1ED;
+    --card: #FAF9F6;
+    --line: #E2D8C7;
+    --line-deep: #D6C8B0;
+    --ink: #2E2A25;
+    --ink-soft: #6F665A;
+    --brown: #9C6B3C;
+    --sans: "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "HarmonyOS Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.7; }
+  #container {
+    position: relative; display: flex; flex-direction: column; width: {{width}}px; height: {{height}}px; padding: 36px 44px 22px; overflow: hidden;
+    background: repeating-linear-gradient(90deg, rgba(120, 100, 70, .025) 0 2px, transparent 2px 26px), var(--bg);
+  }
+
+  /* 外框：双线描边 + 四角圆点 */
+  .frame, .frame::after { position: absolute; border: 1.5px solid var(--line-deep); pointer-events: none; }
+  .frame { inset: 12px; border-radius: 18px; }
+  .frame::after { content: ""; inset: 5px; border-width: 1px; border-color: var(--line); border-radius: 14px; }
+  .corner { position: absolute; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line-deep); background: var(--bg); }
+  .corner.tl { left: 7px; top: 7px; } .corner.tr { right: 7px; top: 7px; }
+  .corner.bl { left: 7px; bottom: 7px; } .corner.br { right: 7px; bottom: 7px; }
+
+  .main { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 500px 1fr; gap: 32px; align-items: stretch; }
+  .left, .right { display: flex; flex-direction: column; gap: 18px; min-width: 0; min-height: 0; }
+
+  /* 左侧立绘：圆形法阵 / 地图 */
+  .art { position: relative; flex: none; height: 400px; }
+  .art svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .art-img { position: absolute; left: 50%; top: 50%; width: 62%; height: 62%; transform: translate(-50%, -50%); object-fit: contain; filter: drop-shadow(0 10px 16px rgba(40, 30, 20, .28)); }
+  .art.large .art-img { width: 86%; height: 96%; }
+  .art.map { height: 470px; border-radius: 10px; border: 2px solid var(--line-deep); background: #F4EEE3; box-shadow: inset 0 0 0 5px #FBF8F2; overflow: hidden; }
+  .art.map .art-img { width: 94%; height: 94%; filter: none; }
+
+  /* 通用卡片 */
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
+  .block { flex: 0 1 auto; min-height: 0; overflow: hidden; padding: 16px 26px 18px; }
+  .block.grow { flex: 1 1 auto; }
+  .block h2 { margin: 0 0 10px; text-align: center; font-size: 24px; font-weight: 500; color: #4E4841; letter-spacing: 3px; line-height: 1.4; }
+  .rich { font-size: 15px; line-height: 1.85; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .fit { font-size: 15px; }
+  .fit .rich, .rich.fit { font-size: inherit; }
+  .rich p { margin: 0; }
+  .rich ul, .rich ol { margin: 0; padding-left: 1.3em; }
+  .rich img { max-width: 100%; height: auto; vertical-align: middle; }
+  .row { display: flex; gap: 16px; padding: 8px 0; }
+  .row + .row { border-top: 1px dashed var(--line); }
+  .row-k { flex: none; min-width: 3.5em; font-size: 1.15em; font-weight: 700; color: var(--brown); line-height: 1.6; }
+  .row-v { flex: 1; min-width: 0; }
+
+  .icons { display: flex; flex-wrap: wrap; gap: 12px 17px; }
+  .icon-cell { width: 84px; }
+  .tile { position: relative; width: 72px; height: 72px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #6E8FB0, #4F6E8E); box-shadow: 0 2px 4px rgba(40, 30, 20, .18); }
+  .round .tile { border-radius: 50%; background: linear-gradient(160deg, #EDE3D3, #D9C7AB); }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile .num { position: absolute; right: -20px; bottom: 7px; width: 66px; transform: rotate(-45deg); background: #E0473E; color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; }
+  .icon-name { margin-top: 4px; font-size: 12px; line-height: 1.3; text-align: center; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tags { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .tag { padding: 4px 16px; border: 1px solid var(--line-deep); border-radius: 4px; background: #fff; color: var(--brown); font-size: 16px; }
+
+  /* 右侧：标题 / 星级 / 属性框 */
+  .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .title { margin: 4px 0 0; font-size: 40px; font-weight: 900; letter-spacing: 2px; line-height: 1.2; }
+  .brand { flex: none; margin-top: 10px; font-size: 22px; color: var(--brown); letter-spacing: 2px; opacity: .85; }
+  .meta { display: flex; align-items: center; gap: 22px; }
+  .stars { flex: none; display: flex; gap: 6px; }
+  .stars svg { width: 38px; height: 38px; filter: drop-shadow(0 2px 2px rgba(180, 120, 0, .25)); }
+  .summary { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .stats { display: flex; flex-wrap: wrap; gap: 14px 18px; padding: 4px; }
+  .stat { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 16px; background: #fff; border: 1px solid var(--line); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); font-size: 19px; line-height: 1.5; }
+  .stat.wide { flex-basis: 100%; }
+  .stat-k { flex: none; font-weight: 700; color: var(--brown); }
+  .stat-v { text-align: right; color: var(--ink-soft); white-space: nowrap; }
+  .stat.wide .stat-v { font-size: 15px; white-space: normal; }
+
+  .foot { position: relative; flex: none; margin-top: 12px; display: flex; justify-content: space-between; font-size: 12px; color: #A89E8E; }
+</style>
+</head>
+<body>
+<div id="container">
+  <div class="frame"></div>
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#FFE266"/>
+        <stop offset="1" stop-color="#F4A60C"/>
+      </linearGradient>
+      <path id="spark" d="M0 -30 C3 -8 8 -3 30 0 C8 3 3 8 0 30 C-3 8 -8 3 -30 0 C-8 -3 -3 -8 0 -30Z"/>
+      <path id="gem" d="M0 -16 L9 0 L0 16 L-9 0Z"/>
+    </defs>
+  </svg>
+
+  <div class="main">
+    <section class="left">
+      <div class="art {{art.mode}}{{if art.large}} large{{/if}}">
+        {{if art.mode === 'circle'}}
+        <svg class="deco" viewBox="0 0 500 420">
+          <g fill="#E7DDCD">
+            <use href="#spark" transform="translate(70 70) scale(1.1)"/>
+            <use href="#spark" transform="translate(438 88) scale(1.2)"/>
+            <use href="#spark" transform="translate(60 350) scale(1)"/>
+            <use href="#spark" transform="translate(440 352) scale(.9)"/>
+            <use href="#spark" transform="translate(120 30) scale(.5)"/>
+            <use href="#spark" transform="translate(395 395) scale(.5)"/>
+          </g>
+          <circle cx="250" cy="210" r="190" fill="none" stroke="#E6DCCB" stroke-width="2"/>
+          <circle cx="250" cy="210" r="176" fill="#EFE7DA"/>
+          <circle cx="250" cy="210" r="164" fill="none" stroke="#FAF6EF" stroke-width="2"/>
+          <g fill="#F6F1E8" stroke="#DCCFBA" stroke-width="1.5">
+            <use href="#gem" transform="translate(250 20)"/>
+            <use href="#gem" transform="translate(250 400)"/>
+            <use href="#gem" transform="translate(60 210) rotate(90)"/>
+            <use href="#gem" transform="translate(440 210) rotate(90)"/>
+          </g>
+        </svg>
+        {{/if}}
+        {{if art.image}}<img class="art-img" src="{{art.image}}" referrerpolicy="no-referrer">{{/if}}
+      </div>
+      {{@ left}}
+    </section>
+
+    <section class="right">
+      <div class="title-row">
+        <h1 class="title">「{{if kind}}{{kind}}·{{/if}}{{name}}」</h1>
+        <span class="brand">观测枢</span>
+      </div>
+
+      {{if stars.length || summary}}
+      <div class="meta">
+        {{if stars.length}}
+        <div class="stars">
+          {{each stars}}<svg viewBox="-16 -16 32 32"><path d="M0 -14 L4.1 -5.6 L13.3 -4.3 L6.7 2.1 L8.2 11.3 L0 7 L-8.2 11.3 L-6.7 2.1 L-13.3 -4.3 L-4.1 -5.6Z" fill="url(#gold)" stroke="#F4B21A" stroke-width="2" stroke-linejoin="round"/></svg>{{/each}}
+        </div>
+        {{/if}}
+        {{if summary}}<p class="summary">{{summary}}</p>{{/if}}
+      </div>
+      {{/if}}
+
+      {{if chips.length}}
+      <div class="stats">
+        {{each chips c}}<div class="stat{{if c.wide}} wide{{/if}}"><span class="stat-k">{{c.k}}:</span><span class="stat-v">{{c.v}}</span></div>{{/each}}
+      </div>
+      {{/if}}
+
+      {{@ right}}
+    </section>
+  </div>
+
+  <footer class="foot">
+    <span>数据来源：米游社观测枢，内容版权归米哈游所有</span>
+    <span>{{time}}</span>
+  </footer>
+</div>
+
+<script>
+/** 排版自适应：卡片内容放不下时先压缩立绘区，再缩小文字（最小 11px） */
+(function () {
+  var art = document.querySelector('.art');
+  var blocks = [].slice.call(document.querySelectorAll('.block'));
+  var over = function (list) { return list.some(function (b) { return b.scrollHeight > b.clientHeight + 1; }); };
+  var left = blocks.filter(function (b) { return b.parentNode.classList.contains('left'); });
+  for (var h = art ? art.offsetHeight : 0; art && h > 260 && over(left); h -= 10) art.style.height = h - 10 + 'px';
+  blocks.forEach(function (b) {
+    var fit = b.querySelector('.fit');
+    for (var size = 15; fit && size > 11 && b.scrollHeight > b.clientHeight + 1; size -= 0.5) fit.style.fontSize = size - 0.5 + 'px';
+  });
+})();
+(function () {
+  var cfg = {{@ pageCfg}};
+  document.querySelectorAll('img').forEach(function (img) {
+    var src = (img.getAttribute('src') || '').trim();
+    if (/^file:/i.test(src)) return;
+    if (src.indexOf('//') === 0) src = 'https:' + src;
+    if (!/^https?:\/\//i.test(src)) { img.remove(); return; }
+    if (cfg.imgProcess && src.indexOf('x-oss-process') < 0 && !/\.gif($|\?)/i.test(src)) {
+      try {
+        if ((cfg.imgHosts || []).indexOf(new URL(src).hostname) >= 0) {
+          src += (src.indexOf('?') < 0 ? '?' : '&') + 'x-oss-process=' + cfg.imgProcess;
+        }
+      } catch (e) {}
+    }
+    img.setAttribute('referrerpolicy', 'no-referrer');
+    img.addEventListener('error', function () { img.remove(); });
+    img.setAttribute('src', src);
+  });
+})();
+</script>
+</body>
+</html>

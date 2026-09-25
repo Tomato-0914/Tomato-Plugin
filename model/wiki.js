@@ -157,6 +157,7 @@ export function modulesToContents (page) {
   const title = String(page?.name ?? '').trim()
   const desc = String(page?.desc ?? '').trim()
   const contents = []
+  const widgets = []
 
   for (const m of Array.isArray(page?.modules) ? page.modules : []) {
     if (m?.is_hidden) continue
@@ -167,6 +168,7 @@ export function modulesToContents (page) {
       if (typeof d === 'string') {
         try { d = JSON.parse(d) } catch { d = { rich_text: d } }
       }
+      widgets.push({ module: name, id: String(c?.component_id ?? ''), data: d })
       frags.push(dataToHtml(d, { title }))
     }
     const html = frags.filter(Boolean).join('')
@@ -182,6 +184,7 @@ export function modulesToContents (page) {
     summary: desc && desc !== title ? desc : '',
     icon: page?.icon_url || page?.header_img_url || '',
     contents,
+    widgets,
     ...(weapon ? { weapon } : {})
   }
 }
