@@ -39,6 +39,32 @@ async function sendMany (e, msgs, title = '') {
 /** 属于 skipCategories 的条目不响应，交给其他插件 */
 const skipped = entry => (getConfig().skipCategories || []).some(c => entry.path.includes(c))
 
+/** 把本地文件发到当前会话：优先 segment.file，其次群文件 / 好友文件接口；都不支持返回 false */
+async function sendFile (e, file) {
+  const name = path.basename(file)
+  try {
+    if (typeof segment !== 'undefined' && typeof segment.file === 'function') {
+      await e.reply(segment.file(file, name))
+      return true
+    }
+    if (e.isGroup && typeof e.group?.sendFile === 'function') {
+      await e.group.sendFile(file)
+      return true
+    }
+    if (e.isGroup && typeof e.group?.fs?.upload === 'function') {
+      await e.group.fs.upload(file)
+      return true
+    }
+    if (typeof e.friend?.sendFile === 'function') {
+      await e.friend.sendFile(file)
+      return true
+    }
+  } catch (err) {
+    logger.warn(`[${pluginName}] 发送文件失败：${err.message}`)
+  }
+  return false
+}
+
 function chunkText (text, size = 800) {
   const out = []
   let buf = ''
@@ -222,8 +248,10 @@ export class ObcGenshin extends plugin {
     const file = path.join(ensureDir(path.join(dataRoot, GAME, 'debug')), `${res.entry.id}.json`)
     fs.writeFileSync(file, JSON.stringify(content, null, 2))
     const rawFile = file.replace(/\.json$/, '.raw.json')
+    let rawOk = false
     try {
       fs.writeFileSync(rawFile, JSON.stringify(await source.getRawDetail(res.entry.id), null, 2))
+      rawOk = true
     } catch (err) {
       logger.warn(`[${pluginName}] 原始数据导出失败：${err.message}`)
     }
@@ -245,8 +273,11 @@ export class ObcGenshin extends plugin {
         : `没有 contents 分段，content 长度 ${String(content.content || '').length}`,
       `常见 class：${topClasses.join(' ') || '无'}`,
       `解析结果：${path.relative(process.cwd(), file)}`,
-      `接口原始数据：${path.relative(process.cwd(), rawFile)}`
+      rawOk ? `接口原始数据：${path.relative(process.cwd(), rawFile)}` : '接口原始数据导出失败，看一下后台日志'
     ]
-    return sendMany(this.e, chunkText(lines.join('\n')), '图鉴调试')
+    await sendMany(this.e, chunkText(lines.join('\n')), '图鉴调试')
+    const sent = await sendFile(this.e, rawOk ? rawFile : file)
+    if (!sent) await this.reply('当前适配器不支持发送文件，请到上面的路径手动下载')
+    return true
   }
 }
