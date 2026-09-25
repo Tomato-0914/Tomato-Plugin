@@ -23,7 +23,7 @@
   html, body { margin: 0; padding: 0; background: var(--bg); }
   body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.7; }
   #container {
-    position: relative; width: {{width}}px; min-height: {{width * 9 / 16}}px; padding: 40px 44px 30px; overflow: hidden;
+    position: relative; display: flex; flex-direction: column; width: {{width}}px; height: {{height}}px; padding: 36px 44px 22px; overflow: hidden;
     background: repeating-linear-gradient(90deg, rgba(120, 100, 70, .025) 0 2px, transparent 2px 26px), var(--bg);
   }
 
@@ -35,22 +35,22 @@
   .corner.tl { left: 7px; top: 7px; } .corner.tr { right: 7px; top: 7px; }
   .corner.bl { left: 7px; bottom: 7px; } .corner.br { right: 7px; bottom: 7px; }
 
-  .main { position: relative; display: grid; grid-template-columns: 500px 1fr; gap: 32px; align-items: stretch; }
-  .left { display: flex; flex-direction: column; gap: 22px; }
-  .right { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .main { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 500px 1fr; gap: 32px; align-items: stretch; }
+  .left { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+  .right { display: flex; flex-direction: column; gap: 18px; min-width: 0; min-height: 0; }
 
   /* 左侧：圆形法阵 + 武器立绘 */
-  .art { position: relative; height: 420px; }
+  .art { position: relative; flex: none; height: 360px; }
   .art svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .art-img { position: absolute; left: 50%; top: 50%; width: 300px; height: 300px; transform: translate(-50%, -50%); object-fit: contain; filter: drop-shadow(0 10px 16px rgba(40, 30, 20, .28)); }
+  .art-img { position: absolute; left: 50%; top: 50%; width: 256px; height: 256px; transform: translate(-50%, -50%); object-fit: contain; filter: drop-shadow(0 10px 16px rgba(40, 30, 20, .28)); }
 
   /* 左侧：武器技能卡 */
   .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
-  .skill { flex: 1; padding: 22px 26px 24px; }
+  .skill { flex: 1; min-height: 0; overflow: hidden; padding: 20px 26px 20px; }
   .skill-name { font-size: 26px; font-weight: 700; color: var(--brown); letter-spacing: 1px; line-height: 1.3; }
-  .skill-body { margin-top: 12px; font-size: 15px; line-height: 1.95; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .skill-body { margin-top: 10px; font-size: 15px; line-height: 1.85; color: var(--ink-soft); overflow-wrap: anywhere; }
   .skill-body p { margin: 0; }
-  .skill-body span[style*="0, 151, 225"], .skill-body span[style*="0,151,225"] { color: var(--hl) !important; }
+  .skill-body .hl { color: var(--hl); }
 
   /* 右侧：标题 */
   .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -70,9 +70,10 @@
   .stat.wide .stat-v { font-size: 16px; white-space: normal; }
 
   /* 右侧：材料 / 推荐角色卡 */
-  .block { padding: 18px 40px 26px; }
-  .block h2 { margin: 0 0 18px; text-align: center; font-size: 26px; font-weight: 500; color: #4E4841; letter-spacing: 3px; }
-  .grid { display: grid; grid-template-columns: repeat(6, 72px); justify-content: space-between; row-gap: 18px; }
+  .block { padding: 14px 40px 20px; }
+  .right > .block:last-child { flex: 1; }
+  .block h2 { margin: 0 0 14px; text-align: center; font-size: 26px; font-weight: 500; color: #4E4841; letter-spacing: 3px; }
+  .grid { display: grid; grid-template-columns: repeat(6, 72px); justify-content: space-between; row-gap: 16px; }
   .tile { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; background: var(--r1); box-shadow: 0 2px 4px rgba(40, 30, 20, .18); }
   .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .tile.r1 { background: var(--r1); } .tile.r2 { background: var(--r2); } .tile.r3 { background: var(--r3); }
@@ -81,9 +82,10 @@
   .tile.char { background: linear-gradient(160deg, #E9DDCB, #D8C6AB); }
   .tile.blank { background: #EDE5D9; box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 7px; }
   .tile.blank i { width: 8px; height: 8px; border-radius: 50%; background: #CDBFA8; }
+  .empty { margin: 0; padding: 20px 0 6px; text-align: center; font-size: 16px; color: #A89E8E; letter-spacing: 2px; }
   .char-name { display: block; margin-top: 4px; font-size: 12px; line-height: 1.3; text-align: center; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .foot { position: relative; margin-top: 16px; display: flex; justify-content: space-between; font-size: 12px; color: #A89E8E; }
+  .foot { position: relative; flex: none; margin-top: 12px; display: flex; justify-content: space-between; font-size: 12px; color: #A89E8E; }
 </style>
 </head>
 <body>
@@ -175,6 +177,7 @@
 
       <div class="card block">
         <h2>推荐角色</h2>
+        {{if characters.length}}
         <div class="grid">
           {{each characters c}}
           <div>
@@ -184,6 +187,9 @@
           {{/each}}
           {{each blanks}}<div class="tile blank"><i></i><i></i><i></i></div>{{/each}}
         </div>
+        {{else}}
+        <p class="empty">观测枢暂未收录推荐角色</p>
+        {{/if}}
       </div>
     </section>
   </div>
@@ -195,6 +201,13 @@
 </div>
 
 <script>
+(function () {
+  var body = document.querySelector('.skill-body');
+  var card = document.querySelector('.skill');
+  for (var size = 15; body && card && size > 11 && card.scrollHeight > card.clientHeight; size -= 0.5) {
+    body.style.fontSize = size - 0.5 + 'px';
+  }
+})();
 (function () {
   var cfg = {{@ pageCfg}};
   document.querySelectorAll('img').forEach(function (img) {

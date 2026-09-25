@@ -104,8 +104,9 @@ function saveRendered (dir, hash, bufs) {
   bufs.forEach((buf, i) => fs.writeFileSync(path.join(dir, `${hash}_${i}.jpg`), buf))
 }
 
-export function clearRendered (gameKey) {
-  fs.rmSync(path.join(dataRoot, gameKey, 'render'), { recursive: true, force: true })
+/** 清除渲染图片缓存：传 id 只清该条目，否则全部清空 */
+export function clearRendered (gameKey, id) {
+  fs.rmSync(path.join(dataRoot, gameKey, 'render', ...(id ? [String(id)] : [])), { recursive: true, force: true })
 }
 
 async function doRender (gameKey, entry, view, r, tplFile = TPL) {
@@ -157,11 +158,13 @@ export async function renderEntry (gameKey, entry, content, { force = false, onM
     const chars = weapon.characters || []
     view = {
       ...weapon,
+      characters: chars.slice(0, 6),
       width: wc.width || 1280,
+      height: wc.height || 800,
       stars: Array.from({ length: Math.min(weapon.rate || 0, 5) }, (_, i) => i),
       days: materialDays(weapon.materials, wc.domainDays),
       obtainWide: String(weapon.obtain || '').length > 6,
-      blanks: Array.from({ length: Math.max(6, Math.ceil(chars.length / 6) * 6) - chars.length }, (_, i) => i),
+      blanks: Array.from({ length: Math.max(0, 6 - chars.length) }, (_, i) => i),
       time: '',
       entryId: entry.id
     }
