@@ -3,6 +3,7 @@ import { sanitizeHtml } from './sanitize.js'
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const strip = s => String(s ?? '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
 const isUrl = s => typeof s === 'string' && /^https?:\/\//i.test(s.trim())
+const flat = x => (x && typeof x === 'object' && !Array.isArray(x) && 'value' in x) ? [].concat(x.value ?? []).join('') : x
 
 /** 正文清洗：去掉内联样式和高亮标记，统一交给模板排版 */
 function clean (html) {
@@ -49,6 +50,23 @@ const tagsBlock = (title, items, cls = '') => {
   const body = items.filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')
   return body ? block(title, `<div class="tags">${body}</div>`, cls) : ''
 }
+const piecesBlock = pieces => pieces.length
+  ? `<div class="pieces">${pieces.map(p =>
+    `<div class="piece"><div class="piece-art">${isUrl(p.img) ? `<img src="${esc(p.img)}">` : ''}</div><div class="piece-name">${esc(p.name)}</div><div class="piece-slot">${esc(p.slot)}</div><div class="piece-desc">${esc(p.desc)}</div></div>`
+  ).join('')}</div>`
+  : ''
+
+/** 页面里的词条卡片（custom-entry-wrapper），取名称和图片 */
+function entryCards (html) {
+  const out = []
+  for (const [t] of String(html ?? '').matchAll(/<span\b[^>]*class="[^"]*custom-entry-wrapper[^"]*"[^>]*>/g)) {
+    const name = strip(t.match(/data-entry-name="([^"]+)"/)?.[1])
+    const img = t.match(/data-entry-img="([^"]+)"/)?.[1]
+    if (name && img && !out.some(c => c.name === name)) out.push({ name, img })
+  }
+  return out
+}
+
 const chip = (k, v) => {
   const t = strip(v)
   return t ? { k, v: t, wide: t.length > 10 } : null
@@ -80,7 +98,44 @@ function materialInfo (content) {
   return { name: strip(d.name), image: d.image || content.icon, star: 0, fields, ingredients: '', variants: [] }
 }
 
+const FOOD_TIERS = ['奇怪', '普通', '美味', '特色']
+
+/** 旧版食物：每个品质一个 food 模板，按名称区分奇怪 / 普通 / 美味 / 特色料理 */
+function oldFood (entry, content) {
+  const list = parseParts(content).filter(p => p.tmplKey === 'food' && p.data?.name).map(p => p.data)
+  if (!list.length) return null
+  const title = strip(entry.title)
+  const tierOf = n => n.startsWith('奇怪的') ? '奇怪' : n.startsWith('美味的') ? '美味' : n === title ? '普通' : '特色'
+  const items = list.map(d => {
+    const name = strip(d.name)
+    const it = { d, name, tier: tierOf(name), effect: [], obtain: '', recipe: '' }
+    for (const m of String(d.effect ?? '').matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
+      const t = strip(m[1])
+      if (/^获得方式[：:]/.test(t)) it.obtain = t.replace(/^获得方式[：:]\s*/, '')
+      else if (/^食谱获[得取][：:]/.test(t)) it.recipe = t.replace(/^食谱获[得取][：:]\s*/, '')
+      else if (t) it.effect.push(t.replace(/^使用效果[：:]\s*/, ''))
+    }
+    return it
+  }).sort((a, b) => FOOD_TIERS.indexOf(a.tier) - FOOD_TIERS.indexOf(b.tier))
+  const normal = items.find(i => i.tier === '普通') || items[0]
+  const rows = items.map(i => ({
+    k: i.tier,
+    html: (i.tier === '特色' ? `<p><b>${esc(i.name)}</b>${i.obtain ? `（${esc(i.obtain)}）` : ''}</p>` : '') + i.effect.map(t => `<p>${esc(t)}</p>`).join('')
+  }))
+  return {
+    kind: '食物',
+    name: title,
+    stars: Number(normal.d.rate) || starOf(tag(entry, '食物星级')),
+    art: { mode: 'circle', images: [normal.d.image || content.icon] },
+    chips: [chip('获得方式', normal.obtain || normal.d.proceed), chip('食谱获取', normal.recipe)],
+    left: textBlock('', clean(normal.d.description), 'grow') + iconsBlock('特色料理', items.filter(i => i.tier === '特色').map(i => ({ name: i.name, img: i.d.image })), 'round'),
+    right: rowsBlock('料理效果', rows, 'grow') + tagsBlock('加工材料', (normal.d.material || []).map(m => `${strip(m.name)}${m.num ? ` ×${m.num}` : ''}`))
+  }
+}
+
 function food (entry, content) {
+  const old = oldFood(entry, content)
+  if (old) return old
   const info = materialInfo(content)
   if (!info) return null
   const f = info.fields
@@ -90,7 +145,7 @@ function food (entry, content) {
     kind: '食物',
     name: info.name || entry.title,
     stars: info.star || starOf(tag(entry, '食物星级', '星级')),
-    art: { mode: 'circle', image: info.image },
+    art: { mode: 'circle', images: [info.image] },
     chips: [chip('获得方式', f['获得方式']), chip('食谱获取', f['食谱获得'] || f['食谱获取'])],
     left: textBlock('', f['描述'], 'grow'),
     right: rowsBlock('料理效果', effects, 'grow') + textBlock('加工材料', ingredients)
@@ -105,7 +160,7 @@ function item (entry, content) {
     kind: tag(entry, '道具类型') || '道具',
     name: info.name || entry.title,
     stars: info.star || starOf(tag(entry, '星级')),
-    art: { mode: 'circle', image: info.image },
+    art: { mode: 'circle', images: [info.image] },
     chips: [chip('获取途径', tag(entry, '获取方式'))],
     left: textBlock('获得方式', f['获得方式'], 'grow'),
     right: rowsBlock('', Object.entries(f).filter(([k]) => k !== '获得方式').map(([k, html]) => ({ k, html })), 'grow')
@@ -125,7 +180,7 @@ function monster (entry, content) {
     name: strip(main.name) || entry.title,
     stars: 0,
     summary: strip(bg.backgroundStory),
-    art: { mode: 'circle', image: main.preview?.[0]?.image || content.icon, large: true },
+    art: { mode: 'frame', images: [main.preview?.[0]?.image || content.icon] },
     chips: [chip('类型', tag(entry, '类型')), chip('元素', fields['元素'] || tag(entry, '元素')), chip('所在区域', fields['所在区域'])],
     left: textBlock('攻略方法', clean(raid.content), 'grow'),
     right: iconsBlock('掉落物品', drops) + rowsBlock('', [{ k: '攻击方式', html: fields['攻击方式'] }, { k: '备注', html: clean(bg.remark) }], 'grow')
@@ -137,7 +192,7 @@ function domain (entry, content) {
   const mission = parts.find(p => p.tmplKey === 'mission' && p.partKey === 'main')?.data
   if (!mission) return null
   const attr = Object.fromEntries((mission.attr || []).map(a => [strip(a.name), strip(a.content)]))
-  const map = (parts.find(p => p.tmplKey === 'mission' && p.partKey === 'map')?.data?.content || []).find(x => isUrl(x?.image))?.image
+  const maps = (parts.find(p => p.tmplKey === 'mission' && p.partKey === 'map')?.data?.content || []).map(x => x?.image).filter(isUrl).slice(0, 2)
   const levelsOf = key => parts.find(p => p.tmplKey === 'illustration' && strip(p.data?.title).includes(key))?.data?.data || []
   const extend = (row, labels, label) => {
     const i = (labels || []).indexOf(label)
@@ -165,7 +220,7 @@ function domain (entry, content) {
     name: `${attr['秘境名称'] || entry.title}${lv ? `·${lv}` : ''}`,
     stars: 0,
     summary: attr['秘境简述'],
-    art: { mode: 'map', image: map || content.icon },
+    art: { mode: 'frame', images: maps.length ? maps : [content.icon] },
     chips: [
       chip('推荐元素', extend(topRow, labels, '推荐元素') || tag(entry, '推荐元素')),
       chip('冒险等级', extend(topRow, labels, '冒险等级要求')),
@@ -176,7 +231,48 @@ function domain (entry, content) {
   }
 }
 
-const BUILDERS = { 食物: food, 背包: item, 敌人: monster, 秘境: domain }
+const SET_NAMES = { 1: '一件套', 2: '两件套', 4: '四件套' }
+
+function artifact (entry, content) {
+  const ws = Array.isArray(content?.widgets) ? content.widgets : []
+  const info = {}
+  let pieces = []
+  let chars = []
+  const base = ws.find(w => w.id === 'rich_base_info')
+  if (base) {
+    for (const x of base.data?.list || []) info[strip(x.key)] = clean([].concat(x.value ?? []).join(''))
+    pieces = ws.filter(w => w.id === 'artifact_list_v2').map(w => ({ slot: strip(w.module), name: strip(flat(w.data?.name)), img: w.data?.icon_url, desc: strip(flat(w.data?.desc)) }))
+    const table = (ws.find(w => w.id === 'multi_table')?.data?.tables || []).find(t => strip(t.tab_name).includes('角色'))
+    chars = entryCards((table?.row || []).map(r => [].concat(r)[0] ?? '').join(''))
+  } else {
+    const parts = parseParts(content)
+    for (const x of parts.find(p => p.tmplKey === 'common' && p.partKey === 'recommend')?.data?.list?.[0]?.recommend || []) info[strip(x.key)] = clean(x.introduction)
+    pieces = parts.filter(p => p.tmplKey === 'relic').map(p => p.data || {}).map(d => ({ slot: strip(d.content?.[0]?.name), name: strip(d.title || d.content?.[0]?.value), img: d.image, desc: strip(d.desc) }))
+    const ill = parts.find(p => p.tmplKey === 'illustration' && strip(p.data?.title).includes('推荐'))
+    const group = (ill?.data?.data || []).find(g => strip(g.name_).includes('角色'))
+    chars = (group?.data || []).filter(x => x?.name && isUrl(x.image)).map(x => ({ name: strip(x.name), img: x.image }))
+  }
+  if (!pieces.length && !Object.keys(info).length) return null
+
+  const rarity = strip(info['稀有度'])
+  const sets = Object.entries(info)
+    .filter(([k]) => k.includes('件套'))
+    .map(([k, html]) => ({ k: SET_NAMES[k.match(/\d/)?.[0]] || k.replace(/效果$/, ''), html }))
+  return {
+    kind: '圣遗物',
+    name: entry.title,
+    stars: Math.max(0, ...(rarity.match(/[1-5]/g) || []).map(Number)) || starOf(tag(entry, '星级')),
+    summary: rarity ? `稀有度：${rarity}` : '',
+    art: null,
+    chips: [],
+    left: textBlock('获取途径', info['获取途径'], 'grow'),
+    right: rowsBlock('套装效果', sets, 'grow'),
+    bottom: piecesBlock(pieces) + iconsBlock('适用角色', chars, 'wide'),
+    mainHeight: 380
+  }
+}
+
+const BUILDERS = { 食物: food, 背包: item, 敌人: monster, 秘境: domain, 圣遗物: artifact }
 
 /** 按目录分类生成专属卡片数据；没有对应分类或解析失败返回 null，走通用模板 */
 export function buildCard (entry, content) {
