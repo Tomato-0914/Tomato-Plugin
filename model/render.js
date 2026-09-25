@@ -95,9 +95,9 @@ export function weaponArt (weapon, dir) {
   const type = WEAPON_DIRS[weapon.type]
   if (dir && type && weapon.name) {
     const file = path.resolve(process.cwd(), dir, type, weapon.name, 'gacha.webp')
-    if (fs.existsSync(file)) return { image: pathToFileURL(file).href, local: true }
+    if (fs.existsSync(file)) return { image: pathToFileURL(file).href, local: true, artType: type }
   }
-  return { image: weapon.image || '', local: false }
+  return { image: weapon.image || '', local: false, artType: type || '' }
 }
 
 async function doRender (gameKey, entry, view, r, tplFile = TPL) {
