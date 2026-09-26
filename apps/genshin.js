@@ -15,23 +15,28 @@ const prefetchDishes = () => source.getIndex()
   .catch(err => logger.warn(`[${pluginName}] 特色料理索引补全失败：${err.message}`))
 setTimeout(prefetchDishes, 15000)
 
-/** 特色料理等品质名作为所属食物的别名；和目录里已有条目同名的不收 */
+/** 特色料理等品质名 → { 所属食物标题, 料理名 }；和目录里已有条目同名的不收 */
 function dishAliases (index) {
   const titles = new Map(index.map(e => [e.id, e.title]))
   const taken = new Set(index.map(e => norm(e.title)))
   const out = new Map()
   for (const [name, id] of Object.entries(source.loadDishes().names)) {
     const k = norm(name)
-    if (k && titles.has(id) && !taken.has(k)) out.set(k, titles.get(id))
+    if (k && titles.has(id) && !taken.has(k)) out.set(k, { title: titles.get(id), name })
   }
   return out
 }
 
-/** 在目录里查找条目：自带别名 + 用户别名 + 特色料理别名 */
+/** 在目录里查找条目：自带别名 + 用户别名 + 特色料理别名；按料理名命中时带上 dish */
 function lookup (q, index) {
   const game = getConfig().games[GAME]
-  const aliases = new Map([...dishAliases(index), ...getAliases(GAME)])
-  return matchEntry(q, index, { aliases, priority: game.categoryPriority || [] })
+  const dishes = dishAliases(index)
+  const user = getAliases(GAME)
+  const aliases = new Map([...[...dishes].map(([k, v]) => [k, v.title]), ...user])
+  const res = matchEntry(q, index, { aliases, priority: game.categoryPriority || [] })
+  const k = norm(q)
+  if (res.type === 'hit' && res.via === 'alias' && dishes.has(k) && !user.has(k)) res.dish = dishes.get(k).name
+  return res
 }
 
 /** 清理旧版本留下的图片缓存目录 */
@@ -160,8 +165,8 @@ export class ObcGenshin extends plugin {
     const res = lookup(q, index)
 
     if (res.type === 'hit' && skipped(res.entry)) return false
-    if (bare) return res.type === 'hit' && res.via !== 'partial' ? this.sendEntry(res.entry) : false
-    if (res.type === 'hit') return this.sendEntry(res.entry)
+    if (bare) return res.type === 'hit' && res.via !== 'partial' ? this.sendEntry(res.entry, false, res.dish) : false
+    if (res.type === 'hit') return this.sendEntry(res.entry, false, res.dish)
 
     const cat = listCategory(q, index.filter(e => !skipped(e)))
     if (cat) {
@@ -183,8 +188,9 @@ export class ObcGenshin extends plugin {
     return this.reply(`没找到「${q}」。发送 #图鉴分类 可以看有哪些分类`)
   }
 
-  async sendEntry (entry, force = false) {
+  async sendEntry (entry, force = false, dish = '') {
     if (skipped(entry)) return false
+    const label = dish ? dish.replace(/^「(.+)」$/, '$1') : entry.title
     let content
     try {
       content = await source.getDetail(entry.id, force)
@@ -197,13 +203,14 @@ export class ObcGenshin extends plugin {
     let imgs
     try {
       imgs = await renderEntry(GAME, entry, content, {
-        onStart: () => getConfig().renderTip && this.reply(`正在生成「${entry.title}」，请稍候…`)
+        dish,
+        onStart: () => getConfig().renderTip && this.reply(`正在生成「${label}」，请稍候…`)
       })
     } catch (err) {
       logger.error(err)
-      return this.reply(`「${entry.title}」渲染失败：${err.message}`)
+      return this.reply(`「${label}」渲染失败：${err.message}`)
     }
-    return sendMany(this.e, imgs.map(buf => segment.image(buf)), entry.title)
+    return sendMany(this.e, imgs.map(buf => segment.image(buf)), label)
   }
 
   async update () {
@@ -234,7 +241,7 @@ export class ObcGenshin extends plugin {
     const res = lookup(q, index)
     if (res.type !== 'hit') return this.reply(`没找到唯一条目「${q}」`)
     source.clearDetails(res.entry.id)
-    return this.sendEntry(res.entry, true)
+    return this.sendEntry(res.entry, true, res.dish)
   }
 
   async categories () {
