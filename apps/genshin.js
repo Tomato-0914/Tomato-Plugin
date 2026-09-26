@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from '../model/config.js'
 import { ObcSource } from '../model/obc.js'
-import { matchEntry, listCategory, getAliases, getWeakAliases, norm } from '../model/match.js'
+import { matchEntry, listCategory, starOf, getAliases, getWeakAliases, norm } from '../model/match.js'
 import { renderEntry } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 
@@ -93,8 +93,9 @@ const HELP = [
   '#图鉴调试护摩之杖：导出原始数据（主人）'
 ].join('\n')
 
-async function sendMany (e, msgs, title = '') {
-  if (msgs.length <= (getConfig().forwardThreshold ?? 2)) return e.reply(msgs.length === 1 ? msgs[0] : msgs)
+/** 多条消息：超过 forwardThreshold 或 forward 为 true 时合并转发 */
+async function sendMany (e, msgs, title = '', forward = false) {
+  if (!forward && msgs.length <= (getConfig().forwardThreshold ?? 2)) return e.reply(msgs.length === 1 ? msgs[0] : msgs)
   try {
     if (typeof Bot !== 'undefined' && typeof Bot.makeForwardArray === 'function') return await e.reply(await Bot.makeForwardArray(msgs))
     const { default: common } = await import('../../../lib/common/common.js')
@@ -104,6 +105,24 @@ async function sendMany (e, msgs, title = '') {
   }
   for (const m of msgs) await e.reply(m)
   return true
+}
+
+const STAR_NAMES = ['', '一星', '二星', '三星', '四星', '五星']
+
+/** 分类列表：首条为总数，之后每个星级一条（五星在前，同星级从新到旧），没有星级的放最后 */
+function categoryMsgs (name, list) {
+  const groups = new Map()
+  for (const e of list) {
+    const s = starOf(e)
+    if (!groups.has(s)) groups.set(s, [])
+    groups.get(s).push(e.title)
+  }
+  const msgs = [`「${name}」共 ${list.length} 条，发送 #名称图鉴 查看`]
+  for (const [s, titles] of groups) {
+    const head = s ? `${'★'.repeat(s)} ${STAR_NAMES[s]}（${titles.length} 条）` : groups.size > 1 ? `其他（${titles.length} 条）` : ''
+    msgs.push(`${head ? `${head}\n` : ''}${titles.join('、')}`)
+  }
+  return msgs
 }
 
 /** 属于 skipCategories 的条目不响应，交给其他插件 */
@@ -222,10 +241,7 @@ export class ObcGenshin extends plugin {
     if (res.type === 'hit') return this.sendEntry(res.entry, false, res.dish)
 
     const cat = listCategory(q, index.filter(e => !skipped(e)))
-    if (cat) {
-      const text = `「${q}」共 ${cat.length} 条，发送 #名称图鉴 查看：\n${cat.join('、')}`
-      return sendMany(this.e, chunkText(text), q)
-    }
+    if (cat) return sendMany(this.e, categoryMsgs(q, cat), `${q}图鉴`, true)
 
     if (res.type === 'multi') {
       res.list = res.list.filter(e => !skipped(e))
