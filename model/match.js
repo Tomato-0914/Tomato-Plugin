@@ -159,12 +159,31 @@ export function starOf (entry) {
   return star
 }
 
-/** 查询词正好是某个分类名（如“武器”）时，返回该分类下的条目：星级从高到低，同星级按上线版本从新到旧；每项为 { entry, star, ver } */
-export function listCategory (query, index, versions = {}) {
-  const q = norm(query)
-  const list = uniqueByTitle(index.filter(e => e.path.some(p => norm(p) === q)))
-  if (!list.length) return null
-  return list
+/** 条目排序：星级从高到低，同星级按上线版本从新到旧；每项为 { entry, star, ver } */
+function sortEntries (list, versions) {
+  return uniqueByTitle(list)
     .map(entry => ({ entry, star: starOf(entry), ver: versionOf(entry, versions) }))
     .sort((a, b) => b.star - a.star || compareVersion(a.ver, b.ver))
+}
+
+/** 查询词正好是某个分类名（如“武器”）时，返回该分类下排好序的条目 */
+export function listCategory (query, index, versions = {}) {
+  const q = norm(query)
+  const list = index.filter(e => e.path.some(p => norm(p) === q))
+  return list.length ? sortEntries(list, versions) : null
+}
+
+/** 背包条目的道具类型（目录标签「道具类型/xx」），没有返回空字符串 */
+export function itemType (entry) {
+  return (entry.tags || []).find(t => t.k === '道具类型')?.v || ''
+}
+
+/** 查询词是某个道具类型（如“小道具”，也可只写开头如“任务”，需唯一）时，返回 { type, list }；否则 null */
+export function listItemType (query, index, versions = {}) {
+  const q = norm(query)
+  if (!q) return null
+  const types = [...new Set(index.map(itemType).filter(Boolean))]
+  const starts = types.filter(t => norm(t).startsWith(q))
+  const type = types.find(t => norm(t) === q) || (starts.length === 1 ? starts[0] : '')
+  return type ? { type, list: sortEntries(index.filter(e => itemType(e) === type), versions) } : null
 }

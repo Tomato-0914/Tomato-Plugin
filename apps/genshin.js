@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from '../model/config.js'
 import { ObcSource } from '../model/obc.js'
-import { matchEntry, listCategory, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
+import { matchEntry, listCategory, listItemType, itemType, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
 import { renderEntry } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 
@@ -84,7 +84,8 @@ const HELP = [
   '护摩之杖、#护摩、苍白套：武器、圣遗物、食物、敌人、秘境可直接发名称或别名',
   '#苍白、月光图鉴：闲聊常用的简称要带 # 或“图鉴”',
   '#原石图鉴：道具和苹果、鸟蛋等常用名词只认这种写法',
-  '#武器图鉴：分类总览；#五星武器图鉴：该星级按版本分组列出',
+  '#武器图鉴：分类总览；#五星武器图鉴 / #金色武器图鉴：该品质按版本分组列出',
+  '#背包图鉴：按道具类型查看；#小道具图鉴、#紫色贵重道具图鉴 等',
   '#图鉴分类：看看有哪些分类',
   '#图鉴更新：重新拉取目录（主人）',
   '#图鉴强制更新：清空全部数据缓存（主人）',
@@ -108,7 +109,10 @@ async function sendMany (e, msgs, title = '', forward = false) {
 }
 
 const STAR_NAMES = ['', '一星', '二星', '三星', '四星', '五星']
-const STAR_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5 }
+const STAR_COLORS = ['', '白色', '绿色', '蓝色', '紫色', '金色']
+const STAR_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 白: 1, 绿: 2, 蓝: 3, 紫: 4, 金: 5 }
+/** 背包道具类型的展示顺序（参照游戏背包页签），没列到的按条数排在后面 */
+const TYPE_ORDER = ['养成道具', '材料', '食材', '贵重道具', '任务道具', '小道具', '摆设']
 
 /** 名称逐行排列，超过 100 个拆成多条，后续条目标题加“（续）” */
 function lineMsgs (head, lines) {
@@ -120,21 +124,35 @@ function lineMsgs (head, lines) {
   return out
 }
 
-/** 分类总览：有星级的列出各星级条数和对应指令，没有星级的直接逐行列出名称 */
-function categoryMsgs (name, list) {
+/** 分类总览：byType 且带道具类型的（背包）先按类型列出；有星级的按 金 紫 蓝 绿 白 列出条数和对应指令；都没有的直接逐行列出名称 */
+function categoryMsgs (name, list, byType = true) {
+  if (byType && list.some(x => itemType(x.entry))) {
+    const counts = new Map()
+    for (const x of list) {
+      const t = itemType(x.entry)
+      if (t) counts.set(t, (counts.get(t) || 0) + 1)
+    }
+    const rank = t => TYPE_ORDER.includes(t) ? TYPE_ORDER.indexOf(t) : TYPE_ORDER.length
+    const types = [...counts].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1])
+    const rest = list.filter(x => !itemType(x.entry)).map(x => x.entry.title)
+    return [
+      `「${name}」共 ${list.length} 条，按类型查看：\n${types.map(([t, n]) => `#${t}图鉴（${n} 条）`).join('\n')}`,
+      ...lineMsgs(rest.length ? `未标类型（${rest.length} 条）` : '', rest)
+    ]
+  }
   const stars = [5, 4, 3, 2, 1].map(s => [s, list.filter(x => x.star === s).length]).filter(([, n]) => n)
   const rest = list.filter(x => !x.star).map(x => x.entry.title)
   if (!stars.length) return [`「${name}」共 ${list.length} 条，发送 #名称图鉴 查看`, ...lineMsgs('', rest)]
-  const lines = stars.map(([s, n]) => `${'★'.repeat(s)} #${STAR_NAMES[s]}${name}图鉴（${n} 条）`)
+  const lines = stars.map(([s, n]) => `${'★'.repeat(s)} ${STAR_COLORS[s]} #${STAR_NAMES[s]}${name}图鉴（${n} 条）`)
   return [
-    `「${name}」共 ${list.length} 条，按星级查看：\n${lines.join('\n')}`,
+    `「${name}」共 ${list.length} 条，按品质查看（也可以发 #金色${name}图鉴 这种）：\n${lines.join('\n')}`,
     ...lineMsgs(rest.length ? `未标星级（${rest.length} 条）` : '', rest)
   ]
 }
 
 /** 单一星级列表：按大版本分组（新版本在前），每行“名称（版本）”；版本表未收录的放最前 */
 function starMsgs (name, star, list) {
-  const title = `${'★'.repeat(star)} ${STAR_NAMES[star]}${name} 共 ${list.length} 条，发送 #名称图鉴 查看`
+  const title = `${'★'.repeat(star)} ${STAR_COLORS[star]}${name} 共 ${list.length} 条，发送 #名称图鉴 查看`
   if (!list.some(x => x.ver)) return [title, ...lineMsgs('', list.map(x => x.entry.title))]
   const groups = new Map()
   for (const x of list) {
@@ -152,16 +170,28 @@ function starMsgs (name, star, list) {
   return msgs
 }
 
-/** 分类指令：武器 → 总览；五星武器 → 该星级按版本分组的列表；不是分类返回 null */
+/** 分类指令：武器 / 小道具 → 总览；五星武器 / 金色小道具 → 该品质按版本分组的列表；不是分类或道具类型返回 null */
 function categoryReply (q, index) {
-  const m = q.match(/^([一二三四五1-5])星(.+)$/)
-  const name = m ? m[2] : q
-  const list = listCategory(name, index.filter(e => !skipped(e)), getVersions(GAME))
-  if (!list) return null
-  if (!m) return categoryMsgs(name, list)
-  const star = STAR_NUM[m[1]] || Number(m[1])
+  const pool = index.filter(e => !skipped(e))
+  const versions = getVersions(GAME)
+  const find = n => {
+    const list = listCategory(n, pool, versions)
+    if (list) return { name: n, list }
+    const t = listItemType(n, pool, versions)
+    return t && { name: t.type, list: t.list, isType: true }
+  }
+  let m = q.match(/^(?:([一二三四五1-5])星|([金紫蓝绿白])色?)(.+)$/)
+  let hit = m && find(m[3])
+  if (!hit) {
+    m = null
+    hit = find(q)
+  }
+  if (!hit) return null
+  const { name, list, isType } = hit
+  if (!m) return categoryMsgs(name, list, !isType)
+  const star = STAR_NUM[m[1] || m[2]] || Number(m[1])
   const picked = list.filter(x => x.star === star)
-  return picked.length ? starMsgs(name, star, picked) : [`「${name}」没有${STAR_NAMES[star]}条目`]
+  return picked.length ? starMsgs(name, star, picked) : [`「${name}」没有${STAR_COLORS[star]}（${STAR_NAMES[star]}）条目`]
 }
 
 /** 属于 skipCategories 的条目不响应，交给其他插件 */
