@@ -19,12 +19,7 @@ const schemas = [
   { field: 'bareCategories', label: '可直接查询的分类', component: 'GTags', bottomHelpMessage: '直接发名称只对这些分类生效，其余分类要发 #名称图鉴', componentProps: { allowAdd: true, allowDel: true } },
   { field: 'strictTitles', label: '严格条目', component: 'GTags', bottomHelpMessage: '日常用词或与其他插件指令重名的条目，只认 #名称图鉴 / #图鉴名称', componentProps: { allowAdd: true, allowDel: true } },
 
-  { component: 'Divider', label: '图片尺寸' },
-  { field: 'weapon.width', label: '武器图宽度', component: 'InputNumber', componentProps: { min: 600, max: 3000, placeholder: '1280' } },
-  { field: 'weapon.height', label: '武器图高度', component: 'InputNumber', componentProps: { min: 400, max: 3000, placeholder: '800' } },
-  { field: 'card.width', label: '卡片宽度', component: 'InputNumber', bottomHelpMessage: '食物、道具、敌人、秘境、圣遗物卡片', componentProps: { min: 600, max: 3000, placeholder: '1280' } },
-  { field: 'card.height', label: '卡片高度', component: 'InputNumber', bottomHelpMessage: '圣遗物卡片高度随内容变化', componentProps: { min: 400, max: 3000, placeholder: '800' } },
-  { field: 'render.width', label: '通用长图宽度', component: 'InputNumber', componentProps: { min: 400, max: 2000, placeholder: '760' } },
+  { component: 'Divider', label: '图片' },
   { field: 'render.quality', label: '图片质量', component: 'InputNumber', bottomHelpMessage: 'JPEG 质量 1~100', componentProps: { min: 1, max: 100, placeholder: '90' } },
   { field: 'weapon.artDir', label: '武器立绘目录', component: 'Input', bottomHelpMessage: '喵喵插件的武器立绘目录（相对 Yunzai 根目录），找不到时用观测枢图标' },
 

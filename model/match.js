@@ -47,6 +47,47 @@ function loadAliases (game) {
   return res
 }
 
+const versionCache = new Map()
+
+/** 版本表：resources/version/<game>.yaml（自带）+ config/version/<game>.yaml（你自己加的），返回 { 分类: Map(规范化名称 → 版本号) } */
+export function getVersions (game) {
+  const files = [
+    path.join(pluginRoot, 'resources', 'version', `${game}.yaml`),
+    path.join(pluginRoot, 'config', 'version', `${game}.yaml`)
+  ]
+  const sig = files.map(mtime).join('|')
+  const hit = versionCache.get(game)
+  if (hit?.sig === sig) return hit.data
+
+  const data = {}
+  for (const file of files) {
+    if (!fs.existsSync(file)) continue
+    for (const [cat, list] of Object.entries(readYaml(file))) {
+      const map = data[cat] || (data[cat] = new Map())
+      for (const [name, ver] of Object.entries(list || {})) if (ver != null && ver !== '') map.set(norm(name), String(ver))
+    }
+  }
+  versionCache.set(game, { sig, data })
+  return data
+}
+
+/** 条目上线版本：按条目所属分类查版本表，查不到返回空字符串 */
+export function versionOf (entry, versions) {
+  const t = norm(entry.title)
+  for (const [cat, map] of Object.entries(versions || {})) {
+    if (entry.path.includes(cat) && map.has(t)) return map.get(t)
+  }
+  return ''
+}
+
+/** 版本号比较：新版本在前，没有版本的排最前（多半是版本表还没收录的新条目） */
+export function compareVersion (a, b) {
+  if (!a || !b) return (a ? 1 : 0) - (b ? 1 : 0)
+  const [x1, y1] = a.split('.').map(Number)
+  const [x2, y2] = b.split('.').map(Number)
+  return x2 - x1 || (y2 || 0) - (y1 || 0)
+}
+
 function similarity (a, b) {
   if (!a || !b) return 0
   const pool = [...b]
@@ -118,9 +159,12 @@ export function starOf (entry) {
   return star
 }
 
-/** 查询词正好是某个分类名（如“武器”）时，返回该分类下的条目：星级从高到低，同星级保持目录顺序（从新到旧） */
-export function listCategory (query, index) {
+/** 查询词正好是某个分类名（如“武器”）时，返回该分类下的条目：星级从高到低，同星级按上线版本从新到旧；每项为 { entry, star, ver } */
+export function listCategory (query, index, versions = {}) {
   const q = norm(query)
   const list = uniqueByTitle(index.filter(e => e.path.some(p => norm(p) === q)))
-  return list.length ? list.sort((a, b) => starOf(b) - starOf(a)) : null
+  if (!list.length) return null
+  return list
+    .map(entry => ({ entry, star: starOf(entry), ver: versionOf(entry, versions) }))
+    .sort((a, b) => b.star - a.star || compareVersion(a.ver, b.ver))
 }
