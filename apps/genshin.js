@@ -109,7 +109,7 @@ async function sendMany (e, msgs, title = '', forward = false) {
 
 const STAR_NAMES = ['', '一星', '二星', '三星', '四星', '五星']
 
-/** 分类列表：首条为总数，之后每个星级一条（五星在前，同星级从新到旧），没有星级的放最后 */
+/** 分类列表：首条为总数，之后每个星级一条、每行一个名称（五星在前，同星级从新到旧），没有星级的放最后；单条超过 100 个名称时拆成多条 */
 function categoryMsgs (name, list) {
   const groups = new Map()
   for (const e of list) {
@@ -120,7 +120,10 @@ function categoryMsgs (name, list) {
   const msgs = [`「${name}」共 ${list.length} 条，发送 #名称图鉴 查看`]
   for (const [s, titles] of groups) {
     const head = s ? `${'★'.repeat(s)} ${STAR_NAMES[s]}（${titles.length} 条）` : groups.size > 1 ? `其他（${titles.length} 条）` : ''
-    msgs.push(`${head ? `${head}\n` : ''}${titles.join('、')}`)
+    for (let i = 0; i < titles.length; i += 100) {
+      const tag = head && i ? `${head.replace(/（.*$/, '')}（续）` : head
+      msgs.push([tag, ...titles.slice(i, i + 100)].filter(Boolean).join('\n'))
+    }
   }
   return msgs
 }
