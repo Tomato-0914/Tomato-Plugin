@@ -72,7 +72,7 @@ const chip = (k, v) => {
   return t ? { k, v: t, wide: t.length > 10 } : null
 }
 
-/** 食物 / 道具通用字段：新版 material_base_info 组件，旧版 material 模板 */
+/** 道具字段：新版 material_base_info 组件，旧版 material 模板 */
 function materialInfo (content) {
   const ws = Array.isArray(content?.widgets) ? content.widgets : []
   const main = ws.find(w => w.id === 'material_base_info' && w.data?.name)
@@ -80,14 +80,7 @@ function materialInfo (content) {
     const d = main.data
     const fields = {}
     for (const a of Array.isArray(d.attr) ? d.attr : []) fields[strip(a.key)] = clean([].concat(a.value ?? []).join(''))
-    const variants = ws
-      .filter(w => w !== main && w.id === 'material_base_info')
-      .map(w => ({
-        name: strip(w.data?.name || w.module),
-        effect: clean([].concat((w.data?.attr || []).find(a => strip(a.key) === '使用效果')?.value ?? []).join(''))
-      }))
-      .filter(v => strip(v.effect))
-    return { name: strip(d.name), image: d.img || d.image || content.icon, star: Number(d.star) || 0, fields, ingredients: clean(d.materials?.value || ''), variants }
+    return { name: strip(d.name), image: d.img || d.image || content.icon, star: Number(d.star) || 0, fields }
   }
   const part = parseParts(content).find(p => p.tmplKey === 'material' && p.partKey === 'main')
   if (!part) return null
@@ -95,60 +88,97 @@ function materialInfo (content) {
   const fields = {}
   for (const c of Array.isArray(d.content) ? d.content : []) fields[strip(c.name)] = clean(c.content)
   if (d.proceed) fields['获得方式'] = clean(d.proceed)
-  return { name: strip(d.name), image: d.image || content.icon, star: 0, fields, ingredients: '', variants: [] }
+  return { name: strip(d.name), image: d.image || content.icon, star: 0, fields }
 }
 
 const FOOD_TIERS = ['奇怪', '普通', '美味', '特色']
 
-/** 旧版食物：每个品质一个 food 模板，按名称区分奇怪 / 普通 / 美味 / 特色料理 */
-function oldFood (entry, content) {
-  const list = parseParts(content).filter(p => p.tmplKey === 'food' && p.data?.name).map(p => p.data)
-  if (!list.length) return null
-  const title = strip(entry.title)
-  const tierOf = n => n.startsWith('奇怪的') ? '奇怪' : n.startsWith('美味的') ? '美味' : n === title ? '普通' : '特色'
-  const items = list.map(d => {
-    const name = strip(d.name)
-    const it = { d, name, tier: tierOf(name), effect: [], obtain: '', recipe: '' }
-    for (const m of String(d.effect ?? '').matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
-      const t = strip(m[1])
-      if (/^获得方式[：:]/.test(t)) it.obtain = t.replace(/^获得方式[：:]\s*/, '')
-      else if (/^食谱获[得取][：:]/.test(t)) it.recipe = t.replace(/^食谱获[得取][：:]\s*/, '')
-      else if (t) it.effect.push(t.replace(/^使用效果[：:]\s*/, ''))
-    }
-    return it
-  }).sort((a, b) => FOOD_TIERS.indexOf(a.tier) - FOOD_TIERS.indexOf(b.tier))
-  const normal = items.find(i => i.tier === '普通') || items[0]
-  const rows = items.map(i => ({
-    k: i.tier,
-    html: (i.tier === '特色' ? `<p><b>${esc(i.name)}</b>${i.obtain ? `（${esc(i.obtain)}）` : ''}</p>` : '') + i.effect.map(t => `<p>${esc(t)}</p>`).join('')
-  }))
-  return {
-    kind: '食物',
-    name: title,
-    stars: Number(normal.d.rate) || starOf(tag(entry, '食物星级')),
-    art: { mode: 'circle', images: [normal.d.image || content.icon] },
-    chips: [chip('获得方式', normal.obtain || normal.d.proceed), chip('食谱获取', normal.recipe)],
-    left: textBlock('', clean(normal.d.description), 'grow') + iconsBlock('特色料理', items.filter(i => i.tier === '特色').map(i => ({ name: i.name, img: i.d.image })), 'round'),
-    right: rowsBlock('料理效果', rows, 'grow') + tagsBlock('加工材料', (normal.d.material || []).map(m => `${strip(m.name)}${m.num ? ` ×${m.num}` : ''}`))
+/** 加工材料 HTML（新版带图标，形如 <img>鸟蛋*4）拆成 [{ name, num, img }] */
+function materialList (html) {
+  const h = String(html ?? '')
+  const out = []
+  for (const m of h.matchAll(/<img[^>]*src="([^"]+)"[^>]*>([\s\S]*?)(?=<img|$)/gi)) {
+    const t = strip(m[2]).match(/^(.+?)\s*[*×xX]\s*(\d+)/)
+    if (t) out.push({ img: m[1], name: t[1].trim(), num: t[2] })
   }
+  if (!out.length) {
+    for (const t of strip(h).matchAll(/([^\s*×，,、；;]+)\s*[*×]\s*(\d+)/g)) out.push({ name: t[1], num: t[2] })
+  }
+  return out
+}
+
+/** 效果段落拆成 效果行 / 获得方式 / 食谱获取 */
+function splitEffect (html) {
+  const out = { effect: [], obtain: '', recipe: '' }
+  const paras = [...String(html ?? '').matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map(m => m[1])
+  for (const p of paras.length ? paras : [html]) {
+    const t = strip(p)
+    if (/^获得方式[：:]/.test(t)) out.obtain = t.replace(/^获得方式[：:]\s*/, '')
+    else if (/^食谱获[得取][：:]/.test(t)) out.recipe = t.replace(/^食谱获[得取][：:]\s*/, '')
+    else if (t) out.effect.push(t.replace(/^使用效果[：:]\s*/, ''))
+  }
+  return out
+}
+
+/** 食物各品质：旧版每个品质一个 food 模板，新版每个品质一个 material_base_info 组件 */
+function foodItems (content) {
+  const old = parseParts(content).filter(p => p.tmplKey === 'food' && p.data?.name).map(p => p.data)
+  if (old.length) {
+    return old.map(d => ({
+      name: strip(d.name),
+      img: d.image,
+      star: Number(d.rate) || 0,
+      desc: clean(d.description),
+      mats: (d.material || []).map(m => ({ name: strip(m.name), num: strip(m.num) })),
+      proceed: strip(d.proceed),
+      ...splitEffect(d.effect)
+    }))
+  }
+  const ws = Array.isArray(content?.widgets) ? content.widgets : []
+  return ws.filter(w => w.id === 'material_base_info' && strip(w.data?.name)).map(w => {
+    const d = w.data
+    const f = {}
+    for (const a of Array.isArray(d.attr) ? d.attr : []) f[strip(a.key)] = [].concat(a.value ?? []).join('')
+    const eff = splitEffect(f['使用效果'])
+    return {
+      name: strip(d.name),
+      img: d.img || d.image,
+      star: Number(d.star) || 0,
+      desc: clean(f['描述']),
+      mats: materialList(d.materials?.value),
+      proceed: '',
+      effect: eff.effect,
+      obtain: strip(f['获得方式']) || eff.obtain,
+      recipe: strip(f['食谱获得'] || f['食谱获取']) || eff.recipe
+    }
+  })
 }
 
 function food (entry, content) {
-  const old = oldFood(entry, content)
-  if (old) return old
-  const info = materialInfo(content)
-  if (!info) return null
-  const f = info.fields
-  const effects = [{ k: '效果', html: f['使用效果'] }, ...info.variants.map(v => ({ k: v.name || '其他', html: v.effect }))]
-  const ingredients = strip(info.ingredients) && strip(info.ingredients) !== '无' ? info.ingredients : ''
+  const title = strip(entry.title)
+  const tierOf = n => n.startsWith('奇怪的') ? '奇怪' : n.startsWith('美味的') ? '美味' : n === title ? '普通' : '特色'
+  const items = foodItems(content)
+    .map(i => ({ ...i, tier: tierOf(i.name) }))
+    .sort((a, b) => FOOD_TIERS.indexOf(a.tier) - FOOD_TIERS.indexOf(b.tier))
+  if (!items.length) return null
+  const normal = items.find(i => i.tier === '普通') || items[0]
+  const single = items.length === 1
+  const rows = items.map(i => ({
+    k: single ? '效果' : i.tier,
+    html: (i.tier === '特色' && !single ? `<p><b>${esc(i.name)}</b>${i.obtain ? `（${esc(i.obtain)}）` : ''}</p>` : '') + i.effect.map(t => `<p>${esc(t)}</p>`).join('')
+  }))
+  const mats = normal.mats.filter(m => m.name && m.name !== '无')
+  const specials = single ? [] : items.filter(i => i.tier === '特色').map(i => ({ name: i.name, img: i.img }))
   return {
     kind: '食物',
-    name: info.name || entry.title,
-    stars: info.star || starOf(tag(entry, '食物星级', '星级')),
-    art: { mode: 'circle', images: [info.image] },
-    chips: [chip('获得方式', f['获得方式']), chip('食谱获取', f['食谱获得'] || f['食谱获取'])],
-    left: textBlock('', f['描述'], 'grow'),
-    right: rowsBlock('料理效果', effects, 'grow') + textBlock('加工材料', ingredients)
+    name: title,
+    stars: normal.star || starOf(tag(entry, '食物星级', '星级')),
+    art: { mode: 'circle', images: [normal.img || content.icon] },
+    chips: [chip('获得方式', normal.obtain || normal.proceed), chip('食谱获取', normal.recipe)],
+    left: textBlock('', normal.desc, 'grow') + iconsBlock('特色料理', specials, 'round'),
+    right: rowsBlock('料理效果', rows, 'grow') + (mats.some(m => m.img)
+      ? iconsBlock('加工材料', mats)
+      : tagsBlock('加工材料', mats.map(m => `${m.name}${m.num ? ` ×${m.num}` : ''}`)))
   }
 }
 
