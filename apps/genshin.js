@@ -27,6 +27,13 @@ function dishAliases (index) {
   return out
 }
 
+/** 按目录给材料补图标：先按词条链接里的 content id，再按名称 */
+function iconResolver (index) {
+  const byId = new Map(index.map(e => [e.id, e.icon]))
+  const byName = new Map(index.map(e => [norm(e.title), e.icon]))
+  return (name, url) => byId.get(String(url ?? '').match(/content\/(\d+)/)?.[1]) || byName.get(norm(name)) || ''
+}
+
 /** 在目录里查找条目：自带别名 + 用户别名 + 特色料理别名；按料理名命中时带上 dish */
 function lookup (q, index) {
   const game = getConfig().games[GAME]
@@ -204,6 +211,7 @@ export class ObcGenshin extends plugin {
     try {
       imgs = await renderEntry(GAME, entry, content, {
         dish,
+        iconOf: iconResolver(await source.getIndex().catch(() => [])),
         onStart: () => getConfig().renderTip && this.reply(`正在生成「${label}」，请稍候…`)
       })
     } catch (err) {

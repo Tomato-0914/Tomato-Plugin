@@ -125,8 +125,8 @@ function splitEffect (html) {
   return out
 }
 
-/** 食物各品质：旧版每个品质一个 food 模板，新版每个品质一个 material_base_info 组件 */
-function foodItems (content) {
+/** 食物各品质：旧版每个品质一个 food 模板，新版每个品质一个 material_base_info 组件；iconOf 给旧版材料补图标 */
+function foodItems (content, iconOf = () => '') {
   const old = parseParts(content).filter(p => p.tmplKey === 'food' && p.data?.name).map(p => p.data)
   if (old.length) {
     return old.map(d => ({
@@ -134,7 +134,7 @@ function foodItems (content) {
       img: d.image,
       star: Number(d.rate) || 0,
       desc: clean(d.description),
-      mats: (d.material || []).map(m => ({ name: strip(m.name), num: strip(m.num) })),
+      mats: (d.material || []).map(m => ({ name: strip(m.name), num: strip(m.num), img: m.icon || iconOf(strip(m.name), m.url) })),
       proceed: strip(d.proceed),
       ...splitEffect(d.effect)
     }))
@@ -187,10 +187,10 @@ function dishCard (entry, content, dish, normal) {
   }
 }
 
-function food (entry, content, { dish } = {}) {
+function food (entry, content, { dish, iconOf } = {}) {
   const title = strip(entry.title)
   const tierOf = n => n.startsWith('奇怪的') ? '奇怪' : n.startsWith('美味的') ? '美味' : n === title ? '普通' : '特色'
-  const items = foodItems(content)
+  const items = foodItems(content, iconOf)
     .map(i => ({ ...i, tier: tierOf(i.name) }))
     .sort((a, b) => FOOD_TIERS.indexOf(a.tier) - FOOD_TIERS.indexOf(b.tier))
   if (!items.length) return null
