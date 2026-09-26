@@ -145,33 +145,40 @@ function categoryMsgs (name, list, byType = true) {
     ]
   }
   const stars = [5, 4, 3, 2, 1].map(s => [s, list.filter(x => x.star === s).length]).filter(([, n]) => n)
-  const rest = list.filter(x => !x.star).map(x => x.entry.title)
-  if (!stars.length) return [`「${name}」共 ${list.length} 条，发送 #名称图鉴 查看`, ...lineMsgs('', rest)]
+  const rest = list.filter(x => !x.star)
+  // 没有星级的分类（比如敌人）没法先按品质分组，直接按版本分组展示
+  if (!stars.length) return [`「${name}」共 ${list.length} 条，发送 #名称图鉴 查看`, ...versionGroups('', list)]
   const lines = stars.map(([s, n]) => `${'★'.repeat(s)} ${STAR_COLORS[s]} #${STAR_NAMES[s]}${name}图鉴（${n} 条）`)
   return [
     `「${name}」共 ${list.length} 条，按品质查看（也可以发 #金色${name}图鉴 这种）：\n${lines.join('\n')}`,
-    ...lineMsgs(rest.length ? `未标星级（${rest.length} 条）` : '', rest)
+    ...versionGroups(rest.length ? '未标星级' : '', rest)
   ]
 }
 
-/** 单一星级列表：按大版本分组（新版本在前），每行“名称（版本）”；版本表未收录的放最前 */
-function starMsgs (name, star, list) {
-  const title = `${'★'.repeat(star)} ${STAR_COLORS[star]}${name} 共 ${list.length} 条，发送 #名称图鉴 查看`
-  if (!list.some(x => x.ver)) return [title, ...lineMsgs('', list.map(x => x.entry.title))]
+/** 按大版本分组（新版本在前）：完全没有版本数据就退化成纯名称列表；head 是每组前面加的标签（比如“未标星级”），可以为空 */
+function versionGroups (head, list) {
+  if (!list.length) return []
+  if (!list.some(x => x.ver)) return lineMsgs(head, list.map(x => x.entry.title))
   const groups = new Map()
   for (const x of list) {
     const key = x.ver ? x.ver.split('.')[0] : ''
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key).push(x)
   }
-  const msgs = [title]
+  const msgs = []
   for (const [major, items] of groups) {
     const vers = items.map(x => x.ver)
     const span = vers[0] === vers[vers.length - 1] ? vers[0] : `${vers[vers.length - 1]}~${vers[0]}`
-    const head = major ? `${span} 版本（${items.length} 条）` : `未收录版本（${items.length} 条）`
-    msgs.push(...lineMsgs(head, items.map(x => x.ver ? `${x.entry.title}（${x.ver}）` : x.entry.title)))
+    const sub = major ? `${span} 版本（${items.length} 条）` : `未收录版本（${items.length} 条）`
+    msgs.push(...lineMsgs(head ? `${head}·${sub}` : sub, items.map(x => x.ver ? `${x.entry.title}（${x.ver}）` : x.entry.title)))
   }
   return msgs
+}
+
+/** 单一星级列表：按大版本分组（新版本在前），每行“名称（版本）” */
+function starMsgs (name, star, list) {
+  const title = `${'★'.repeat(star)} ${STAR_COLORS[star]}${name} 共 ${list.length} 条，发送 #名称图鉴 查看`
+  return [title, ...versionGroups('', list)]
 }
 
 /** 分类指令：武器 / 小道具 → 总览；五星武器 / 金色小道具 → 该品质按版本分组的列表；不是分类或道具类型返回 null */
