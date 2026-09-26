@@ -15,24 +15,43 @@ const prefetchDishes = () => source.getIndex()
   .catch(err => logger.warn(`[${pluginName}] 特色料理索引补全失败：${err.message}`))
 setTimeout(prefetchDishes, 15000)
 
+/** 目录派生的查找表（id → 条目、规范化标题 → 条目），按目录对象缓存，避免每条消息都遍历全部标题 */
+const indexCache = new WeakMap()
+function indexMaps (index) {
+  let m = indexCache.get(index)
+  if (!m) {
+    m = { byId: new Map(index.map(e => [e.id, e])), byTitle: new Map(index.map(e => [norm(e.title), e])) }
+    indexCache.set(index, m)
+  }
+  return m
+}
+
 /** 特色料理等品质名 → { 所属食物标题, 料理名 }；和目录里已有条目同名的不收 */
 function dishAliases (index) {
-  const titles = new Map(index.map(e => [e.id, e.title]))
-  const taken = new Set(index.map(e => norm(e.title)))
+  const { byId, byTitle } = indexMaps(index)
   const out = new Map()
   for (const [name, id] of Object.entries(source.loadDishes().names)) {
     const k = norm(name)
-    if (k && titles.has(id) && !taken.has(k)) out.set(k, { title: titles.get(id), name })
+    const e = byId.get(id)
+    if (k && e && !byTitle.has(k)) out.set(k, { title: e.title, name })
   }
   return out
 }
 
 /** 按目录给材料补图标：先按词条链接里的 content id，再按名称 */
 function iconResolver (index) {
-  const byId = new Map(index.map(e => [e.id, e.icon]))
-  const byName = new Map(index.map(e => [norm(e.title), e.icon]))
-  return (name, url) => byId.get(String(url ?? '').match(/content\/(\d+)/)?.[1]) || byName.get(norm(name)) || ''
+  const { byId, byTitle } = indexMaps(index)
+  return (name, url) => byId.get(String(url ?? '').match(/content\/(\d+)/)?.[1])?.icon || byTitle.get(norm(name))?.icon || ''
 }
+
+/** 不带「图鉴」的消息先粗筛：只有精确标题、别名、料理名才值得走完整匹配 */
+function mayHit (q, index) {
+  const k = norm(q)
+  return !!k && (indexMaps(index).byTitle.has(k) || getAliases(GAME).has(k) || dishAliases(index).has(k))
+}
+
+/** Atlas 等插件自己的「图鉴」管理指令，不当作查询 */
+const FOREIGN = /^[#/]*((github)?(原神|星铁|绝区零|洛克|rc)?图鉴(插件)?(强行)?(强制)?升级|(强制)?更新图鉴)$/
 
 /** 在目录里查找条目：自带别名 + 用户别名 + 特色料理别名；按料理名命中时带上 dish */
 function lookup (q, index) {
@@ -121,15 +140,15 @@ export class ObcGenshin extends plugin {
   constructor () {
     const cfg = getConfig()
     const rule = [
-      { reg: '^#(原神)?图鉴(帮助|help)?$', fnc: 'help' },
+      { reg: '^[#/](原神)?图鉴(帮助|help|菜单|功能)?$', fnc: 'help' },
       { reg: '^#(原神)?图鉴(强制)?更新$', fnc: 'update', permission: 'master' },
       { reg: '^#(原神)?图鉴调试\\s*\\S.*$', fnc: 'debug', permission: 'master' },
       { reg: '^#(原神)?图鉴清除缓存.*$', fnc: 'clearCache', permission: 'master' },
       { reg: '^#(原神)?图鉴(分类|目录)$', fnc: 'categories' },
-      { reg: '^#(原神)?图鉴\\s*\\S.*$', fnc: 'queryPrefix' },
-      { reg: '^#.+图鉴$', fnc: 'querySuffix' }
+      { reg: '^[#/](原神)?图鉴\\s*\\S.*$', fnc: 'queryPrefix' },
+      { reg: '^[#/]?.+图鉴$', fnc: 'querySuffix' }
     ]
-    if (cfg.bareMatch) rule.push({ reg: '^#[^#\\s]{1,15}$', fnc: 'queryBare' })
+    if (cfg.bareMatch) rule.push({ reg: '^[#/]?[^#/\\s]{1,20}$', fnc: 'queryBare' })
     super({
       name: '观测枢图鉴·原神',
       dsc: '实时拉取米游社观测枢数据渲染图鉴',
@@ -144,20 +163,23 @@ export class ObcGenshin extends plugin {
   }
 
   async queryPrefix () {
-    return this.query(this.e.msg.replace(/^#(原神)?图鉴\s*/, ''))
+    if (FOREIGN.test(this.e.msg)) return false
+    return this.query(this.e.msg.replace(/^[#/](原神)?图鉴\s*/, ''))
   }
 
+  /** #名称图鉴 列分类 / 多条候选；不带 # 的 名称图鉴 只在命中条目时回复 */
   async querySuffix () {
-    if (/^#(强制)?更新图鉴$/.test(this.e.msg)) return false
-    return this.query(this.e.msg.replace(/^#(原神)?/, '').replace(/\s*图鉴$/, ''), { loose: true })
+    if (FOREIGN.test(this.e.msg)) return false
+    const q = this.e.msg.replace(/^[#/]?(原神)?/, '').replace(/\s*图鉴$/, '')
+    return /^[#/]/.test(this.e.msg) ? this.query(q, { loose: true }) : this.query(q, { bare: true, partial: true })
   }
 
   async queryBare () {
-    return this.query(this.e.msg.replace(/^#/, ''), { bare: true })
+    return this.query(this.e.msg.replace(/^[#/]/, ''), { bare: true })
   }
 
-  /** bare：#名称；loose：#名称图鉴。两者没命中都放行给其他插件 */
-  async query (q, { bare = false, loose = false } = {}) {
+  /** bare：只在命中条目时回复（partial 允许名称的一部分）；loose：没命中时放行。两者都不提示“没找到” */
+  async query (q, { bare = false, loose = false, partial = false } = {}) {
     q = String(q).trim()
     if (!q || q.length > 30) return false
 
@@ -169,10 +191,11 @@ export class ObcGenshin extends plugin {
       return bare ? false : this.reply(`观测枢目录拉取失败：${err.message}`)
     }
 
+    if (bare && !partial && !mayHit(q, index)) return false
     const res = lookup(q, index)
 
     if (res.type === 'hit' && skipped(res.entry)) return false
-    if (bare) return res.type === 'hit' && res.via !== 'partial' ? this.sendEntry(res.entry, false, res.dish) : false
+    if (bare) return res.type === 'hit' && (partial || res.via !== 'partial') ? this.sendEntry(res.entry, false, res.dish) : false
     if (res.type === 'hit') return this.sendEntry(res.entry, false, res.dish)
 
     const cat = listCategory(q, index.filter(e => !skipped(e)))
@@ -197,7 +220,7 @@ export class ObcGenshin extends plugin {
 
   async sendEntry (entry, force = false, dish = '') {
     if (skipped(entry)) return false
-    const label = dish ? dish.replace(/^「(.+)」$/, '$1') : entry.title
+    const label = (dish || entry.title).replace(/^「(.+)」$/, '$1')
     let content
     try {
       content = await source.getDetail(entry.id, force)
