@@ -74,6 +74,8 @@ export class ObcSource {
     this.index = null
     this.indexAt = 0
     this.indexJob = null
+    this.dishes = null
+    this.dishJob = null
   }
 
   get game () {
@@ -215,6 +217,46 @@ export class ObcSource {
     const data = await this.request(`${base}/entry_page?app_sn=${appSn}&lang=zh-cn&entry_page_id=${encodeURIComponent(id)}`)
     if (!data?.page) throw new Error('词条为空')
     return modulesToContents(data.page)
+  }
+
+  /** 特色料理索引：料理名 → 所属食物条目 id，done 记录已经抓过的食物；持久化在 dishes.json */
+  loadDishes () {
+    if (!this.dishes) {
+      const data = this.readCache(path.join(this.dir, 'dishes.json'), Infinity)?.data
+      this.dishes = { done: new Set(data?.done || []), names: data?.names || {} }
+    }
+    return this.dishes
+  }
+
+  recordDishes (id, names) {
+    const d = this.loadDishes()
+    d.done.add(String(id))
+    for (const n of names) d.names[n] = String(id)
+    this.writeCache(path.join(this.dir, 'dishes.json'), { done: [...d.done], names: d.names })
+  }
+
+  /** 后台逐条抓取「会产出特色料理」且还没记录过的食物，补全特色料理索引 */
+  prefetchDishes (index, namesOf) {
+    if (this.dishJob) return this.dishJob
+    const d = this.loadDishes()
+    const todo = index.filter(e => e.path.includes('食物') && !d.done.has(e.id) &&
+      e.tags.some(t => t.k === '是否产出特殊料理' && t.v === '是'))
+    if (!todo.length) return Promise.resolve()
+    logger.mark(`[${pluginName}] 开始补全特色料理索引，共 ${todo.length} 条`)
+    this.dishJob = (async () => {
+      let ok = 0
+      for (const e of todo) {
+        try {
+          this.recordDishes(e.id, namesOf(await this.getDetail(e.id)).filter(n => n !== e.title))
+          ok++
+        } catch (err) {
+          logger.warn(`[${pluginName}] 特色料理索引跳过 ${e.title}：${err.message}`)
+        }
+        await sleep(800)
+      }
+      logger.mark(`[${pluginName}] 特色料理索引补全完成，成功 ${ok} 条`)
+    })().finally(() => { this.dishJob = null })
+    return this.dishJob
   }
 
   /** 清除详情缓存：传 id 只清该条目，否则全部清空 */
