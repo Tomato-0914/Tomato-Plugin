@@ -57,11 +57,14 @@ render:
 
 ## 别名
 
-自带别名在 `resources/alias/gs.yaml`，预置了 75 把五星武器和 112 把三、四星武器的简称与「角色专武」叫法（如 护摩、胡桃专武、匣里剑，整理自 [miao-plugin](https://github.com/yoimiya-kokomi/miao-plugin) 的武器别名表，MIT License）。自己加的写到 `config/alias/gs.yaml`，格式相同，升级不会覆盖：
+自带别名在 `resources/alias/gs.yaml`，预置了 75 把五星武器和 112 把三、四星武器的简称与「角色专武」叫法（如 护摩、胡桃专武、匣里剑），以及 63 套圣遗物的简称和部件名（如 辰砂、魔女、月女的华彩 → 乐园遗落之花），均整理自 [miao-plugin](https://github.com/yoimiya-kokomi/miao-plugin) 的别名表（MIT License）。自己加的写到 `config/alias/gs.yaml`，格式相同，升级不会覆盖：
 
 ```yaml
 雷电将军: [雷神, 将军]
+苍白之火: ['#苍白']
 ```
+
+别名前加 `#`（要带引号）就是弱别名：只在消息带 `#` 或“图鉴”时生效，`#苍白`、`苍白图鉴` 能查到苍白之火，单独发“苍白”不会触发。容易在闲聊里出现的圣遗物简称（苍白、乐园、流浪、翠绿等）都是弱别名。
 
 名称的一部分（比如“雾切”→ 雾切之回光）不用写，插件会自动模糊匹配。
 
