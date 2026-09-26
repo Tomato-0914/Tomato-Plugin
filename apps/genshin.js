@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from '../model/config.js'
 import { ObcSource } from '../model/obc.js'
-import { matchEntry, listCategory, listItemType, itemType, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
+import { matchEntry, listCategory, listItemType, itemTab, BAG_TABS, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
 import { renderEntry } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 
@@ -85,7 +85,7 @@ const HELP = [
   '#苍白、月光图鉴：闲聊常用的简称要带 # 或“图鉴”',
   '#原石图鉴：道具和苹果、鸟蛋等常用名词只认这种写法',
   '#武器图鉴：分类总览；#五星武器图鉴 / #金色武器图鉴：该品质按版本分组列出',
-  '#背包图鉴：按道具类型查看；#小道具图鉴、#紫色贵重道具图鉴 等',
+  '#背包图鉴：按游戏背包页签查看；#养成道具图鉴、#紫色贵重道具图鉴 等',
   '#图鉴分类：看看有哪些分类',
   '#图鉴更新：重新拉取目录（主人）',
   '#图鉴强制更新：清空全部数据缓存（主人）',
@@ -111,8 +111,6 @@ async function sendMany (e, msgs, title = '', forward = false) {
 const STAR_NAMES = ['', '一星', '二星', '三星', '四星', '五星']
 const STAR_COLORS = ['', '白色', '绿色', '蓝色', '紫色', '金色']
 const STAR_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 白: 1, 绿: 2, 蓝: 3, 紫: 4, 金: 5 }
-/** 背包道具类型的展示顺序（参照游戏背包页签），没列到的按条数排在后面 */
-const TYPE_ORDER = ['养成道具', '材料', '食材', '贵重道具', '任务道具', '小道具', '摆设']
 
 /** 名称逐行排列，超过 100 个拆成多条，后续条目标题加“（续）” */
 function lineMsgs (head, lines) {
@@ -124,19 +122,20 @@ function lineMsgs (head, lines) {
   return out
 }
 
-/** 分类总览：byType 且带道具类型的（背包）先按类型列出；有星级的按 金 紫 蓝 绿 白 列出条数和对应指令；都没有的直接逐行列出名称 */
+/** 分类总览：byType 且带道具类型的（背包）先按游戏背包页签列出；有星级的按 金 紫 蓝 绿 白 列出条数和对应指令；都没有的直接逐行列出名称 */
 function categoryMsgs (name, list, byType = true) {
-  if (byType && list.some(x => itemType(x.entry))) {
+  if (byType && list.some(x => itemTab(x.entry))) {
     const counts = new Map()
     for (const x of list) {
-      const t = itemType(x.entry)
+      const t = itemTab(x.entry)
       if (t) counts.set(t, (counts.get(t) || 0) + 1)
     }
-    const rank = t => TYPE_ORDER.includes(t) ? TYPE_ORDER.indexOf(t) : TYPE_ORDER.length
+    const order = Object.keys(BAG_TABS)
+    const rank = t => order.includes(t) ? order.indexOf(t) : order.length
     const types = [...counts].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1])
-    const rest = list.filter(x => !itemType(x.entry)).map(x => x.entry.title)
+    const rest = list.filter(x => !itemTab(x.entry)).map(x => x.entry.title)
     return [
-      `「${name}」共 ${list.length} 条，按类型查看：\n${types.map(([t, n]) => `#${t}图鉴（${n} 条）`).join('\n')}`,
+      `「${name}」共 ${list.length} 条，按背包页签查看：\n${types.map(([t, n]) => `#${t}图鉴（${n} 条）`).join('\n')}`,
       ...lineMsgs(rest.length ? `未标类型（${rest.length} 条）` : '', rest)
     ]
   }
