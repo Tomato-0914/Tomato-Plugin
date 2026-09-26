@@ -46,25 +46,48 @@ export function versionsFile (game) {
 /**
  * 联网检查 genshin-db 有没有更新，有变化才重写本地缓存；
  * 拉取失败（离线、被墙）只记日志，不影响插件正常查询——查询时照样能用上一次同步到的数据，或退回插件自带的版本表。
+ * 返回 { changed, added: { 分类: 新增条数 }, totalAdded }：added 只统计新出现的名称，已有名称改了版本号不算在内。
  */
 export async function syncVersions (game) {
   const data = {}
   for (const [dir, label] of Object.entries(SOURCES)) data[label] = await loadCategory(dir)
 
   const file = versionsFile(game)
+  const prevRaw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
+  let prev = {}
+  try { prev = prevRaw ? JSON.parse(prevRaw) : {} } catch { prev = {} }
+
+  const added = {}
+  let totalAdded = 0
+  for (const [label, map] of Object.entries(data)) {
+    const prevNames = prev[label] || {}
+    const n = Object.keys(map).filter(name => !(name in prevNames)).length
+    if (n) {
+      added[label] = n
+      totalAdded += n
+    }
+  }
+
   const next = JSON.stringify(data)
-  const prev = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
-  if (next === prev) return { changed: false, counts: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, Object.keys(v).length])) }
+  if (next === prevRaw) return { changed: false, added: {}, totalAdded: 0 }
 
   ensureDir(path.dirname(file))
   fs.writeFileSync(file, next)
-  return { changed: true, counts: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, Object.keys(v).length])) }
+  return { changed: true, added, totalAdded }
+}
+
+/** 同步结果拼成文字：先总览一行，再每个有新增的分类一行 */
+export function formatSyncResult ({ changed, added, totalAdded }) {
+  if (!changed) return ['没有从观测枢获取到新内容']
+  if (!totalAdded) return ['版本表数据有更新（没有新条目，可能是修正了已有的版本号）']
+  const lines = Object.entries(added).map(([label, n]) => `「${label}」图鉴目录：新增 ${n} 条`)
+  return [`版本表已更新，本次新增 ${totalAdded} 条`, ...lines]
 }
 
 /** 每天固定时间自动检查一次；启动后先等一会再查一次，不用等到当天零点 */
 export function scheduleVersionSync (game, hour = 0) {
   const check = () => syncVersions(game)
-    .then(({ changed }) => { if (changed) logger.mark(`[${pluginName}] 版本表已从 genshin-db 更新`) })
+    .then(r => { if (r.changed) logger.mark(`[${pluginName}] ${formatSyncResult(r).join('\n')}`) })
     .catch(err => logger.warn(`[${pluginName}] 版本表同步失败（不影响正常使用）：${err.message}`))
 
   const now = new Date()

@@ -166,12 +166,6 @@ export class ObcSource {
     return entries
   }
 
-  /** 不发请求，只看当前已知的目录（内存优先，其次磁盘缓存，不管新不新鲜）；拿不到返回 null */
-  peekIndex () {
-    if (this.index) return this.index
-    return this.readCache(path.join(this.dir, 'index.json'), Infinity)?.data || null
-  }
-
   /** 详情：磁盘缓存 → 接口（旧/新接口自动分流）；接口挂了就用旧缓存顶上 */
   async getDetail (id, force = false) {
     const ttl = getConfig().api?.detailTTL ?? 43200

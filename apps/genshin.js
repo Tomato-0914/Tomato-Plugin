@@ -5,7 +5,7 @@ import { ObcSource } from '../model/obc.js'
 import { matchEntry, listCategory, listItemType, itemTab, BAG_TABS, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
 import { renderEntry } from '../model/render.js'
 import { dishNames } from '../model/card.js'
-import { syncVersions, scheduleVersionSync } from '../model/versionSync.js'
+import { syncVersions, scheduleVersionSync, formatSyncResult } from '../model/versionSync.js'
 
 const GAME = 'gs'
 const source = new ObcSource(GAME)
@@ -15,37 +15,9 @@ const prefetchDishes = index => Promise.resolve(index || source.getIndex())
   .then(list => source.prefetchDishes(list, dishNames))
   .catch(err => logger.warn(`[${pluginName}] 特色料理索引补全失败：${err.message}`))
 source.onRefresh = prefetchDishes
+setTimeout(prefetchDishes, 15000)
 
-/** 目录更新前后对比：新条目按顶级分类（武器/圣遗物/食物…）计数 */
-function diffIndex (before, index) {
-  const beforeIds = new Set((before || []).map(e => e.id))
-  const added = index.filter(e => !beforeIds.has(e.id))
-  const counts = new Map()
-  for (const e of added) {
-    const cat = e.path.filter(p => p !== '图鉴')[0] || '未分类'
-    counts.set(cat, (counts.get(cat) || 0) + 1)
-  }
-  const lines = [...counts].sort((a, b) => b[1] - a[1]).map(([cat, n]) => `「${cat}」图鉴目录：新增 ${n} 条`)
-  return { added, lines }
-}
-
-/** 启动后台强制刷新一次目录，把更新详情打到控制台日志 */
-async function startupRefresh () {
-  const before = source.peekIndex()
-  try {
-    const index = await source.getIndex(true)
-    const { added, lines } = diffIndex(before, index)
-    logger.mark(added.length
-      ? `[${pluginName}] 启动更新：共 ${index.length} 条，本次新增 ${added.length} 条\n${lines.join('\n')}`
-      : `[${pluginName}] 启动更新：没有从观测枢获取到新内容，共 ${index.length} 条`)
-  } catch (err) {
-    logger.warn(`[${pluginName}] 启动更新目录失败：${err.message}`)
-  }
-}
-setTimeout(startupRefresh, 10000)
-setTimeout(prefetchDishes, 20000) // 兜底：万一启动刷新失败，稍后单独再补一次特色料理索引
-
-/** 每天后台自动从 genshin-db 同步一次武器/圣遗物/食物的上线版本，失败不影响正常查询 */
+/** 每天后台自动从 genshin-db 同步一次武器/圣遗物/食物的上线版本；启动后也会先跑一次，日志打到控制台 */
 scheduleVersionSync(GAME)
 
 /** 目录派生的查找表（id → 条目、规范化标题 → 条目），按目录对象缓存，避免每条消息都遍历全部标题 */
@@ -119,9 +91,9 @@ const HELP = [
   '#武器图鉴：分类总览；#五星武器图鉴 / #金色武器图鉴：该品质按版本分组列出',
   '#背包图鉴：按游戏背包页签查看；#养成道具图鉴、#紫色贵重道具图鉴 等',
   '#图鉴分类：看看有哪些分类',
-  '#更新图鉴目录：重新拉取目录，合并转发显示各分类新增条数（主人）',
-  '#强制更新图鉴目录：额外清空全部详情缓存（主人）',
-  '#图鉴更新版本表：立即从 genshin-db 同步武器/圣遗物/食物的上线版本（主人）',
+  '#图鉴更新：重新拉取目录（主人）',
+  '#图鉴强制更新：清空全部数据缓存（主人）',
+  '#更新图鉴目录：立即从 genshin-db 同步版本表，合并转发显示各分类新增条数（主人）',
   '#图鉴清除缓存：清空全部条目详情缓存（主人）',
   '#图鉴清除缓存护摩之杖：只清这一条的详情缓存（主人）',
   '#图鉴调试护摩之杖：导出原始数据（主人）'
@@ -283,8 +255,8 @@ export class ObcGenshin extends plugin {
     const cfg = getConfig()
     const rule = [
       { reg: '^[#/](原神)?图鉴(帮助|help|菜单|功能)?$', fnc: 'help' },
-      { reg: '^#?(原神)?(强制)?更新图鉴目录$', fnc: 'update', permission: 'master' },
-      { reg: '^#(原神)?图鉴更新版本表$', fnc: 'updateVersions', permission: 'master' },
+      { reg: '^#(原神)?图鉴(强制)?更新$', fnc: 'update', permission: 'master' },
+      { reg: '^#?(原神)?更新图鉴目录$', fnc: 'updateVersions', permission: 'master' },
       { reg: '^#(原神)?图鉴调试\\s*\\S.*$', fnc: 'debug', permission: 'master' },
       { reg: '^#(原神)?图鉴清除缓存.*$', fnc: 'clearCache', permission: 'master' },
       { reg: '^#(原神)?图鉴(分类|目录)$', fnc: 'categories' },
@@ -387,30 +359,25 @@ export class ObcGenshin extends plugin {
   }
 
   async update () {
-    const force = /强制/.test(this.e.msg)
-    const before = source.peekIndex()
+    const force = this.e.msg.includes('强制')
     if (force) source.clearDetails()
-    let index
     try {
-      index = await source.getIndex(true)
+      const index = await source.getIndex(true)
+      return this.reply(`目录已更新，共 ${index.length} 条${force ? '；详情缓存已清空' : ''}`)
     } catch (err) {
       return this.reply(`更新失败：${err.message}`)
     }
-    const { added, lines } = diffIndex(before, index)
-    const note = force ? '；详情缓存已清空' : ''
-    if (!added.length) return this.reply(`没有从观测枢获取到新内容${note}`)
-    return sendMany(this.e, [`观测枢目录已更新，共 ${index.length} 条，本次新增 ${added.length} 条${note}`, ...lines], '图鉴目录更新', true)
   }
 
   /** 立即从 genshin-db 同步一次版本表，方便刚出新武器/圣遗物时马上更新，不用等到当天自动同步的时间 */
   async updateVersions () {
+    let result
     try {
-      const { changed, counts } = await syncVersions(GAME)
-      const line = Object.entries(counts).map(([k, n]) => `${k} ${n}`).join('，')
-      return this.reply(`版本表${changed ? '已更新' : '已是最新'}：${line}`)
+      result = await syncVersions(GAME)
     } catch (err) {
       return this.reply(`版本表同步失败：${err.message}`)
     }
+    return sendMany(this.e, formatSyncResult(result), '版本表更新', true)
   }
 
   /** 不带名称清空全部详情缓存；带名称只清这一条；都只清缓存，不生成图，下次查询时重新拉取 */
