@@ -57,7 +57,7 @@ render:
 
 ## 别名
 
-自带别名在 `resources/alias/gs.yaml`，预置了 75 把五星武器的简称和「角色专武」叫法（如 护摩、胡桃专武，整理自 [miao-plugin](https://github.com/yoimiya-kokomi/miao-plugin) 的武器别名表，MIT License）。自己加的写到 `config/alias/gs.yaml`，格式相同，升级不会覆盖：
+自带别名在 `resources/alias/gs.yaml`，预置了 75 把五星武器和 112 把三、四星武器的简称与「角色专武」叫法（如 护摩、胡桃专武、匣里剑，整理自 [miao-plugin](https://github.com/yoimiya-kokomi/miao-plugin) 的武器别名表，MIT License）。自己加的写到 `config/alias/gs.yaml`，格式相同，升级不会覆盖：
 
 ```yaml
 雷电将军: [雷神, 将军]
