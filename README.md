@@ -32,6 +32,7 @@ git clone https://github.com/Tomato-0914/Tomato-Plugin.git ./plugins/Tomato-Plug
 | `#原神图鉴` / `#图鉴帮助` | 帮助 |
 | `#图鉴更新` | 重新拉取目录（主人） |
 | `#图鉴强制更新` | 清空详情缓存后重新拉取目录（主人） |
+| `#更新图鉴目录` | 立即从 genshin-db 同步版本表，合并转发显示各分类新增了多少条，没有新内容会提示（主人） |
 | `#图鉴清除缓存` | 清空全部条目详情缓存（主人） |
 | `#图鉴清除缓存护摩之杖` | 只清这一条的详情缓存，下次查询时重新拉取（主人） |
 | `#图鉴调试护摩之杖` | 导出该条目的原始数据和结构摘要，并把原始数据文件直接发到聊天里（主人） |
@@ -84,7 +85,13 @@ renderScale: 150
 
 ## 版本表
 
-分类列表里的上线版本来自 `resources/version/gs.yaml`（武器、圣遗物、食物），整理自 [genshin-db](https://github.com/theBowja/genshin-db)（MIT License），观测枢本身不提供版本信息。游戏更新后插件会跟着更新这份表；表里还没有的新条目排在最前的「未收录版本」组。想自己补充或修正，写到 `config/version/gs.yaml`：
+分类列表里的上线版本数据来自 [genshin-db](https://github.com/theBowja/genshin-db)（MIT License），观测枢本身不提供版本信息。武器、圣遗物、食物三类各自的版本号，按优先级从低到高：
+
+1. `resources/version/gs.yaml`：插件自带的一份底表，装好即用，不联网也有数据
+2. `data/Tomato-Plugin/gs/versions.json`：插件启动后自动在后台联网同步的最新数据，每天固定时间（默认零点）检查一次 genshin-db 有没有更新，没变化就什么也不做；直连 GitHub 不通时会自动换 jsdelivr 镜像试一次；同步失败只记日志，不影响正常查询
+3. `config/version/gs.yaml`：你自己补充或修正的，优先级最高，不会被自动同步覆盖
+
+新版本刚上线、genshin-db 还没收录时，条目会排在分类列表最前的「未收录版本」组，等它更新后插件下一次自动同步就会补上。`#更新图鉴目录`（`#` 可以不带）可以立即触发一次同步，合并转发显示各分类新增了多少条，没有新内容会提示「没有从观测枢获取到新内容」；插件启动后 1 分钟也会自动跑一次，结果打到控制台日志。手动补充写到 `config/version/gs.yaml`：
 
 ```yaml
 武器:

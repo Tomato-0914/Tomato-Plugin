@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { pluginRoot, mtime, readYaml } from './config.js'
+import { versionsFile } from './versionSync.js'
 
 export const norm = s => String(s ?? '')
   .normalize('NFKC')
@@ -49,10 +50,14 @@ function loadAliases (game) {
 
 const versionCache = new Map()
 
-/** 版本表：resources/version/<game>.yaml（自带）+ config/version/<game>.yaml（你自己加的），返回 { 分类: Map(规范化名称 → 版本号) } */
+/**
+ * 版本表，返回 { 分类: Map(规范化名称 → 版本号) }，按优先级从低到高：
+ * resources/version/<game>.yaml（插件自带） → data/<插件名>/<game>/versions.json（后台自动从 genshin-db 同步的） → config/version/<game>.yaml（你自己加的）
+ */
 export function getVersions (game) {
   const files = [
     path.join(pluginRoot, 'resources', 'version', `${game}.yaml`),
+    versionsFile(game),
     path.join(pluginRoot, 'config', 'version', `${game}.yaml`)
   ]
   const sig = files.map(mtime).join('|')
