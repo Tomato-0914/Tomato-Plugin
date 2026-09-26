@@ -27,6 +27,9 @@ function enqueue (fn) {
 
 const inflight = new Map()
 
+/** 固定出图尺寸（像素），模板按这个尺寸排版，不开放配置 */
+const SIZE = { weapon: [1280, 800], card: [1280, 800], entry: 760 }
+
 const STAR_WORDS = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5 }
 const ELEMENTS = { 火: '#EF7938', 水: '#4CC2F1', 风: '#72E2C2', 雷: '#D376F0', 草: '#A5C83B', 冰: '#9FD6E3', 岩: '#F0B232' }
 
@@ -126,7 +129,7 @@ async function doRender (gameKey, entry, view, r, tplFile = TPL) {
     multiPage: tplFile === TPL,
     multiPageHeight: Math.round((r.pageHeight || 3500) * scale),
     pageGotoParams: { waitUntil: 'networkidle0', timeout: r.timeout || 60000 },
-    width: r.width || 760,
+    width: SIZE.entry,
     ...view,
     bodyStyle: scale === 1 ? '' : `transform:scale(${scale});transform-origin:0 0`,
     pageCfg
@@ -159,8 +162,8 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
       ...weapon,
       ...weaponArt(weapon, wc.artDir),
       characters: chars.slice(0, 6),
-      width: wc.width || 1280,
-      height: wc.height || 800,
+      width: SIZE.weapon[0],
+      height: SIZE.weapon[1],
       stars: Array.from({ length: Math.min(weapon.rate || 0, 5) }, (_, i) => i),
       days: materialDays(weapon.materials, wc.domainDays),
       obtainWide: String(weapon.obtain || '').length > 6,
@@ -170,15 +173,14 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
     }
   } else if (card) {
     tplFile = CTPL
-    const cc = cfg.card || {}
     view = {
       ...card,
       stars: Array.from({ length: Math.min(card.stars || 0, 5) }, (_, i) => i),
       summary: card.summary || '',
       art: card.art || null,
       bottom: card.bottom || '',
-      width: cc.width || 1280,
-      height: card.mainHeight ? 0 : cc.height || 800,
+      width: SIZE.card[0],
+      height: card.mainHeight ? 0 : SIZE.card[1],
       mainHeight: card.mainHeight || 0,
       time: '',
       entryId: entry.id

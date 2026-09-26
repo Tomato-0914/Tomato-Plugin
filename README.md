@@ -35,8 +35,7 @@ Yunzai-Bot（TRSS-Yunzai / Miao-Yunzai）图鉴插件。查询时实时读取米
 
 ```yaml
 priority: 50
-render:
-  width: 900
+renderScale: 150
 ```
 
 改完配置不用重启（`priority` 除外）。装了[锅巴插件](https://github.com/guoba-yunzai/guoba-plugin)的话，也可以在锅巴面板里改常用项，保存后写入 `config/config.yaml`。
@@ -52,8 +51,7 @@ render:
 - `render.excludeSections`：不想渲染的分段（默认跳过角色故事、配音/语音、关联词条）。
 - `render.removeSelectors`：渲染前从正文里删掉的元素。
 - `api.detailIdSplit` / `games.gs.newBase`：新旧数据源的分流阈值（默认 0，全部先走新接口）和新接口地址，一般不用动。
-- `weapon.width` / `weapon.height`：武器图尺寸，默认 1280×800，技能描述太长时自动缩小字号。
-- `card.width` / `card.height`：食物、道具、敌人、秘境卡片的尺寸，默认 1280×800；圣遗物卡片只用宽度，高度随内容变化。
+- 图片尺寸固定（武器图和卡片 1280×800，圣遗物卡片高度随内容变化，通用长图宽 760），想要更清晰调 `renderScale` 即可。
 - `weapon.artDir`：喵喵插件的武器立绘目录。装了喵喵插件时优先用它的透明立绘，找不到（比如新武器喵喵还没更新）再用观测枢的图标。
 - `renderScale`：图片渲染精度，50~300，默认 100；调到 150、200 图片更清晰，体积也更大。
 - `renderTip`：生成前先回一句“正在生成”，嫌多可以关掉。
