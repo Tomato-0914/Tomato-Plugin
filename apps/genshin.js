@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from '../model/config.js'
 import { ObcSource } from '../model/obc.js'
-import { matchEntry, listCategory, starOf, getAliases, getWeakAliases, norm } from '../model/match.js'
+import { matchEntry, listCategory, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
 import { renderEntry } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 
@@ -84,7 +84,7 @@ const HELP = [
   '护摩之杖、#护摩、苍白套：武器、圣遗物、食物、敌人、秘境可直接发名称或别名',
   '#苍白、月光图鉴：闲聊常用的简称要带 # 或“图鉴”',
   '#原石图鉴：道具和苹果、鸟蛋等常用名词只认这种写法',
-  '#武器图鉴：列出某个分类下的全部条目',
+  '#武器图鉴：分类总览；#五星武器图鉴：该星级按版本分组列出',
   '#图鉴分类：看看有哪些分类',
   '#图鉴更新：重新拉取目录（主人）',
   '#图鉴强制更新：清空全部数据缓存（主人）',
@@ -108,24 +108,60 @@ async function sendMany (e, msgs, title = '', forward = false) {
 }
 
 const STAR_NAMES = ['', '一星', '二星', '三星', '四星', '五星']
+const STAR_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5 }
 
-/** 分类列表：首条为总数，之后每个星级一条、每行一个名称（五星在前，同星级从新到旧），没有星级的放最后；单条超过 100 个名称时拆成多条 */
-function categoryMsgs (name, list) {
-  const groups = new Map()
-  for (const e of list) {
-    const s = starOf(e)
-    if (!groups.has(s)) groups.set(s, [])
-    groups.get(s).push(e.title)
+/** 名称逐行排列，超过 100 个拆成多条，后续条目标题加“（续）” */
+function lineMsgs (head, lines) {
+  const out = []
+  for (let i = 0; i < lines.length; i += 100) {
+    const tag = head && i ? `${head.replace(/（.*$/, '')}（续）` : head
+    out.push([tag, ...lines.slice(i, i + 100)].filter(Boolean).join('\n'))
   }
-  const msgs = [`「${name}」共 ${list.length} 条，发送 #名称图鉴 查看`]
-  for (const [s, titles] of groups) {
-    const head = s ? `${'★'.repeat(s)} ${STAR_NAMES[s]}（${titles.length} 条）` : groups.size > 1 ? `其他（${titles.length} 条）` : ''
-    for (let i = 0; i < titles.length; i += 100) {
-      const tag = head && i ? `${head.replace(/（.*$/, '')}（续）` : head
-      msgs.push([tag, ...titles.slice(i, i + 100)].filter(Boolean).join('\n'))
-    }
+  return out
+}
+
+/** 分类总览：有星级的列出各星级条数和对应指令，没有星级的直接逐行列出名称 */
+function categoryMsgs (name, list) {
+  const stars = [5, 4, 3, 2, 1].map(s => [s, list.filter(x => x.star === s).length]).filter(([, n]) => n)
+  const rest = list.filter(x => !x.star).map(x => x.entry.title)
+  if (!stars.length) return [`「${name}」共 ${list.length} 条，发送 #名称图鉴 查看`, ...lineMsgs('', rest)]
+  const lines = stars.map(([s, n]) => `${'★'.repeat(s)} #${STAR_NAMES[s]}${name}图鉴（${n} 条）`)
+  return [
+    `「${name}」共 ${list.length} 条，按星级查看：\n${lines.join('\n')}`,
+    ...lineMsgs(rest.length ? `未标星级（${rest.length} 条）` : '', rest)
+  ]
+}
+
+/** 单一星级列表：按大版本分组（新版本在前），每行“名称（版本）”；版本表未收录的放最前 */
+function starMsgs (name, star, list) {
+  const title = `${'★'.repeat(star)} ${STAR_NAMES[star]}${name} 共 ${list.length} 条，发送 #名称图鉴 查看`
+  if (!list.some(x => x.ver)) return [title, ...lineMsgs('', list.map(x => x.entry.title))]
+  const groups = new Map()
+  for (const x of list) {
+    const key = x.ver ? x.ver.split('.')[0] : ''
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(x)
+  }
+  const msgs = [title]
+  for (const [major, items] of groups) {
+    const vers = items.map(x => x.ver)
+    const span = vers[0] === vers[vers.length - 1] ? vers[0] : `${vers[vers.length - 1]}~${vers[0]}`
+    const head = major ? `${span} 版本（${items.length} 条）` : `未收录版本（${items.length} 条）`
+    msgs.push(...lineMsgs(head, items.map(x => x.ver ? `${x.entry.title}（${x.ver}）` : x.entry.title)))
   }
   return msgs
+}
+
+/** 分类指令：武器 → 总览；五星武器 → 该星级按版本分组的列表；不是分类返回 null */
+function categoryReply (q, index) {
+  const m = q.match(/^([一二三四五1-5])星(.+)$/)
+  const name = m ? m[2] : q
+  const list = listCategory(name, index.filter(e => !skipped(e)), getVersions(GAME))
+  if (!list) return null
+  if (!m) return categoryMsgs(name, list)
+  const star = STAR_NUM[m[1]] || Number(m[1])
+  const picked = list.filter(x => x.star === star)
+  return picked.length ? starMsgs(name, star, picked) : [`「${name}」没有${STAR_NAMES[star]}条目`]
 }
 
 /** 属于 skipCategories 的条目不响应，交给其他插件 */
@@ -241,10 +277,11 @@ export class ObcGenshin extends plugin {
 
     if (res.type === 'hit' && skipped(res.entry)) return false
     if (bare) return res.type === 'hit' && (partial || res.via !== 'partial') && bareAllowed(res.entry) ? this.sendEntry(res.entry, false, res.dish) : false
-    if (res.type === 'hit') return this.sendEntry(res.entry, false, res.dish)
+    if (res.type === 'hit' && res.via !== 'partial') return this.sendEntry(res.entry, false, res.dish)
 
-    const cat = listCategory(q, index.filter(e => !skipped(e)))
-    if (cat) return sendMany(this.e, categoryMsgs(q, cat), `${q}图鉴`, true)
+    const cat = categoryReply(q, index)
+    if (cat) return sendMany(this.e, cat, `${q}图鉴`, true)
+    if (res.type === 'hit') return this.sendEntry(res.entry, false, res.dish)
 
     if (res.type === 'multi') {
       res.list = res.list.filter(e => !skipped(e))

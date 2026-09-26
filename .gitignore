@@ -1,4 +1,5 @@
 config/config.yaml
 config/alias/*.yaml
+config/version/*.yaml
 node_modules/
 data/
