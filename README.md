@@ -84,7 +84,9 @@ renderScale: 150
 
 ## 版本表
 
-分类列表里的上线版本来自 `resources/version/gs.yaml`（武器、圣遗物、食物），整理自 [genshin-db](https://github.com/theBowja/genshin-db)（MIT License），观测枢本身不提供版本信息。游戏更新后插件会跟着更新这份表；表里还没有的新条目排在最前的「未收录版本」组。想自己补充或修正，写到 `config/version/gs.yaml`：
+分类列表里的上线版本来自 `resources/version/gs.yaml`（武器、圣遗物、食物），整理自 [genshin-db](https://github.com/theBowja/genshin-db)（MIT License），观测枢本身不提供版本信息。
+
+这份表每周一由 GitHub Actions（`.github/workflows/update-versions.yml`）自动从 genshin-db 重新拉取，有变化就开一个 PR，合并后 `#更新图鉴` 即可用上；也可以在仓库的 Actions 页手动触发。新版本刚上线、genshin-db 还没收录时，条目会排在最前的「未收录版本」组，等它更新后下一轮自动跑就会补上。想自己补充或修正，写到 `config/version/gs.yaml`（不会被这个自动流程覆盖）：
 
 ```yaml
 武器:

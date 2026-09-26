@@ -1,0 +1,34 @@
+# 定时从 genshin-db 拉取最新的武器/圣遗物/食物上线版本，重新生成 resources/version/gs.yaml。
+# 有变化就开一个 PR，人工确认后合并；没变化就什么也不做。
+name: 更新版本表
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # 每周一 UTC 3:00（北京时间 11:00）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 重新生成版本表
+        run: node scripts/update-versions.mjs
+      - name: 提交为 PR（无变化则跳过）
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: '更新版本表（genshin-db 自动同步）'
+          title: '更新版本表'
+          body: |
+            从 [genshin-db](https://github.com/theBowja/genshin-db) 自动拉取的武器 / 圣遗物 / 食物上线版本数据有变化，重新生成了 `resources/version/gs.yaml`。
+
+            合并前建议看一下变化的条目是不是这次版本新增的内容。
+          branch: bot/update-versions
+          delete-branch: true
