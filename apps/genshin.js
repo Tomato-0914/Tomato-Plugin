@@ -57,7 +57,8 @@ const FOREIGN = /^[#/]*((github)?(原神|星铁|绝区零|洛克|rc)?图鉴(插�
 function lookup (q, index) {
   const game = getConfig().games[GAME]
   const dishes = dishAliases(index)
-  const user = getAliases(GAME)
+  const { byTitle } = indexMaps(index)
+  const user = new Map([...getAliases(GAME)].filter(([k]) => !byTitle.has(k)))
   const aliases = new Map([...[...dishes].map(([k, v]) => [k, v.title]), ...user])
   const res = matchEntry(q, index, { aliases, priority: game.categoryPriority || [] })
   const k = norm(q)
