@@ -90,7 +90,7 @@ const HELP = [
   '#图鉴更新：重新拉取目录（主人）',
   '#图鉴强制更新：清空全部数据缓存（主人）',
   '#图鉴清除缓存：清空全部条目详情缓存（主人）',
-  '#图鉴清除缓存护摩之杖：重新拉取该条目并生成（主人）',
+  '#图鉴清除缓存护摩之杖：只清这一条的详情缓存（主人）',
   '#图鉴调试护摩之杖：导出原始数据（主人）'
 ].join('\n')
 
@@ -363,7 +363,7 @@ export class ObcGenshin extends plugin {
     }
   }
 
-  /** 不带名称清空全部详情缓存；带名称重新拉取该条目并生成 */
+  /** 不带名称清空全部详情缓存；带名称只清这一条；都只清缓存，不生成图，下次查询时重新拉取 */
   async clearCache () {
     const q = this.e.msg.replace(/^#(原神)?图鉴清除缓存\s*/, '').trim()
     if (!q) {
@@ -379,7 +379,7 @@ export class ObcGenshin extends plugin {
     const res = lookup(q, index)
     if (res.type !== 'hit') return this.reply(`没找到唯一条目「${q}」`)
     source.clearDetails(res.entry.id)
-    return this.sendEntry(res.entry, true, res.dish)
+    return this.reply(`已清空「${res.entry.title}」的详情缓存，下次查询时重新拉取`)
   }
 
   async categories () {
