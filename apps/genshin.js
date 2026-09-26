@@ -9,10 +9,11 @@ import { dishNames } from '../model/card.js'
 const GAME = 'gs'
 const source = new ObcSource(GAME)
 
-/** 启动后在后台补全特色料理索引（只抓还没记录过的食物） */
-const prefetchDishes = () => source.getIndex()
-  .then(index => source.prefetchDishes(index, dishNames))
+/** 启动后及每次目录从接口刷新后，在后台补全特色料理索引（只抓还没记录过的食物） */
+const prefetchDishes = index => Promise.resolve(index || source.getIndex())
+  .then(list => source.prefetchDishes(list, dishNames))
   .catch(err => logger.warn(`[${pluginName}] 特色料理索引补全失败：${err.message}`))
+source.onRefresh = prefetchDishes
 setTimeout(prefetchDishes, 15000)
 
 /** 目录派生的查找表（id → 条目、规范化标题 → 条目），按目录对象缓存，避免每条消息都遍历全部标题 */
@@ -80,6 +81,9 @@ fs.rmSync(path.join(dataRoot, GAME, 'render'), { recursive: true, force: true })
 const HELP = [
   '【观测枢图鉴 · 原神】',
   '#护摩之杖图鉴 或 #图鉴护摩之杖：查询条目（角色请用喵喵插件）',
+  '护摩之杖、#护摩、苍白套：武器、圣遗物、食物、敌人、秘境可直接发名称或别名',
+  '#苍白、月光图鉴：闲聊常用的简称要带 # 或“图鉴”',
+  '#原石图鉴：道具和苹果、鸟蛋等常用名词只认这种写法',
   '#武器图鉴：列出某个分类下的全部条目',
   '#图鉴分类：看看有哪些分类',
   '#图鉴更新：重新拉取目录（主人）',
@@ -104,6 +108,15 @@ async function sendMany (e, msgs, title = '') {
 
 /** 属于 skipCategories 的条目不响应，交给其他插件 */
 const skipped = entry => (getConfig().skipCategories || []).some(c => entry.path.includes(c))
+
+/** 能否直接发名称查询：分类在 bareCategories 内，且不在 strictTitles 里 */
+function bareAllowed (entry) {
+  const cfg = getConfig()
+  const cats = cfg.bareCategories
+  if (Array.isArray(cats) && !cats.some(c => entry.path.includes(c))) return false
+  const t = norm(entry.title)
+  return !(cfg.strictTitles || []).some(x => norm(x) === t)
+}
 
 /** 把本地文件发到当前会话：优先 segment.file，其次群文件 / 好友文件接口；都不支持返回 false */
 async function sendFile (e, file) {
@@ -196,15 +209,16 @@ export class ObcGenshin extends plugin {
     try {
       index = await source.getIndex()
     } catch (err) {
+      if (bare) return false
       logger.error(err)
-      return bare ? false : this.reply(`观测枢目录拉取失败：${err.message}`)
+      return this.reply(`观测枢目录拉取失败：${err.message}`)
     }
 
     if (bare && !partial && !mayHit(q, index, plain)) return false
     const res = lookup(q, index, plain)
 
     if (res.type === 'hit' && skipped(res.entry)) return false
-    if (bare) return res.type === 'hit' && (partial || res.via !== 'partial') ? this.sendEntry(res.entry, false, res.dish) : false
+    if (bare) return res.type === 'hit' && (partial || res.via !== 'partial') && bareAllowed(res.entry) ? this.sendEntry(res.entry, false, res.dish) : false
     if (res.type === 'hit') return this.sendEntry(res.entry, false, res.dish)
 
     const cat = listCategory(q, index.filter(e => !skipped(e)))
@@ -258,7 +272,6 @@ export class ObcGenshin extends plugin {
     if (force) source.clearDetails()
     try {
       const index = await source.getIndex(true)
-      prefetchDishes()
       return this.reply(`目录已更新，共 ${index.length} 条${force ? '；详情缓存已清空' : ''}`)
     } catch (err) {
       return this.reply(`更新失败：${err.message}`)

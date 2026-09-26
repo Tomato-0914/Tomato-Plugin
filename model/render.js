@@ -190,7 +190,7 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
     }
   }
 
-  view.time = new Date().toLocaleString('zh-CN', { hour12: false })
+  view.time = new Date().toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })
 
   const key = `${gameKey}:${entry.id}:${dish || ''}`
   if (inflight.has(key)) return inflight.get(key)
