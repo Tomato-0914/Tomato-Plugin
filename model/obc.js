@@ -192,12 +192,11 @@ export class ObcSource {
     }
   }
 
-  /** 接口原始返回（调试用，不做解析和缓存） */
-  async getRawDetail (id) {
-    const split = getConfig().api?.detailIdSplit ?? 500000
+  /** 接口原始返回（调试用，不做解析和缓存）：api 为 'new'（hoyowiki）或 'old'（blackboard） */
+  async getRawDetail (id, api = 'new') {
     const { base, appSn } = this.game
     const newBase = this.game.newBase || 'https://api-takumi.mihoyo.com/hoyowiki/genshin/wapi'
-    return Number(id) >= split
+    return api === 'new'
       ? this.request(`${newBase}/entry_page?app_sn=${appSn}&lang=zh-cn&entry_page_id=${encodeURIComponent(id)}`)
       : this.request(`${base}/content/info?app_sn=${appSn}&content_id=${encodeURIComponent(id)}`)
   }

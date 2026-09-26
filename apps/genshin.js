@@ -287,13 +287,15 @@ export class ObcGenshin extends plugin {
 
     const file = path.join(ensureDir(path.join(dataRoot, GAME, 'debug')), `${res.entry.id}.json`)
     fs.writeFileSync(file, JSON.stringify(content, null, 2))
-    const rawFile = file.replace(/\.json$/, '.raw.json')
-    let rawOk = false
-    try {
-      fs.writeFileSync(rawFile, JSON.stringify(await source.getRawDetail(res.entry.id), null, 2))
-      rawOk = true
-    } catch (err) {
-      logger.warn(`[${pluginName}] 原始数据导出失败：${err.message}`)
+    const raws = []
+    for (const [api, suffix, label] of [['new', '.raw.json', '新接口'], ['old', '.old.raw.json', '旧接口']]) {
+      const rawFile = file.replace(/\.json$/, suffix)
+      try {
+        fs.writeFileSync(rawFile, JSON.stringify(await source.getRawDetail(res.entry.id, api), null, 2))
+        raws.push({ label, file: rawFile })
+      } catch (err) {
+        raws.push({ label, error: err.message })
+      }
     }
 
     const secs = Array.isArray(content.contents) ? content.contents : []
@@ -313,10 +315,12 @@ export class ObcGenshin extends plugin {
         : `没有 contents 分段，content 长度 ${String(content.content || '').length}`,
       `常见 class：${topClasses.join(' ') || '无'}`,
       `解析结果：${path.relative(process.cwd(), file)}`,
-      rawOk ? `接口原始数据：${path.relative(process.cwd(), rawFile)}` : '接口原始数据导出失败，看一下后台日志'
+      ...raws.map(r => r.file ? `${r.label}原始数据：${path.relative(process.cwd(), r.file)}` : `${r.label}没有数据：${r.error}`)
     ]
     await sendMany(this.e, chunkText(lines.join('\n')), '图鉴调试')
-    const sent = await sendFile(this.e, rawOk ? rawFile : file)
+    const files = raws.filter(r => r.file).map(r => r.file)
+    let sent = true
+    for (const f of files.length ? files : [file]) sent = await sendFile(this.e, f) && sent
     if (!sent) await this.reply('当前适配器不支持发送文件，请到上面的路径手动下载')
     return true
   }
