@@ -74,6 +74,8 @@ export class ObcSource {
     this.index = null
     this.indexAt = 0
     this.indexJob = null
+    this.indexFail = null
+    this.onRefresh = null
     this.dishes = null
     this.dishJob = null
   }
@@ -95,9 +97,10 @@ export class ObcSource {
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const json = await res.json()
-        if (json?.retcode !== 0) throw new Error(`retcode=${json?.retcode} ${json?.message || ''}`.trim())
+        if (json?.retcode !== 0) throw Object.assign(new Error(`retcode=${json?.retcode} ${json?.message || ''}`.trim()), { retcode: json?.retcode })
         return json.data
       } catch (err) {
+        if (err.retcode !== undefined) throw err
         lastErr = err
         if (i === 0) await sleep(1000)
       }
@@ -119,10 +122,11 @@ export class ObcSource {
     fs.writeFileSync(file, JSON.stringify(data))
   }
 
-  /** 目录：内存 → 磁盘缓存 → 接口；接口挂了就用旧缓存顶上 */
+  /** 目录：内存 → 磁盘缓存 → 接口；接口挂了就用旧缓存顶上；没有缓存时失败后 5 分钟内不再请求 */
   async getIndex (force = false) {
     const ttl = getConfig().api?.indexTTL ?? 21600
     if (!force && this.index && Date.now() - this.indexAt < ttl * 1000) return this.index
+    if (!force && !this.index && this.indexFail && Date.now() - this.indexFail.at < 300000) throw this.indexFail.err
     if (!this.indexJob) {
       this.indexJob = this.loadIndex(force, ttl).finally(() => { this.indexJob = null })
     }
@@ -140,9 +144,15 @@ export class ObcSource {
       if (!entries.length) throw new Error('目录为空，接口结构可能变了')
       this.writeCache(file, entries)
       logger.mark(`[${pluginName}] ${name}目录已更新，共 ${entries.length} 条`)
-      return this.setIndex(entries)
+      this.indexFail = null
+      this.setIndex(entries)
+      this.onRefresh?.(entries)
+      return entries
     } catch (err) {
-      if (!cache?.data?.length) throw err
+      if (!cache?.data?.length) {
+        this.indexFail = { at: Date.now(), err }
+        throw err
+      }
       logger.warn(`[${pluginName}] 目录拉取失败，先用本地缓存：${err.message}`)
       this.setIndex(cache.data)
       this.indexAt = Date.now() - Math.max(ttl - 600, 0) * 1000 // 10 分钟后再试
