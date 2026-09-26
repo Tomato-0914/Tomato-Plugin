@@ -8,6 +8,8 @@ const flat = x => (x && typeof x === 'object' && !Array.isArray(x) && 'value' in
 /** 正文清洗：去掉内联样式和高亮标记，统一交给模板排版 */
 function clean (html) {
   return sanitizeHtml(html)
+    .replace(/<sup\b[^>]*>[\s\S]*?<\/sup>/gi, '')
+    .replace(/<\/?(html|head|body)\b[^>]*>/gi, '')
     .replace(/\sstyle="[^"]*"/gi, '')
     .replace(/<\/?(mark|span|a)\b[^>]*>/gi, '')
     .replace(/<p[^>]*>(\s|&nbsp;|<br[^>]*>)*<\/p>/gi, '')
@@ -62,10 +64,15 @@ function entryCards (html) {
   for (const [t] of String(html ?? '').matchAll(/<span\b[^>]*class="[^"]*custom-entry-wrapper[^"]*"[^>]*>/g)) {
     const name = strip(t.match(/data-entry-name="([^"]+)"/)?.[1])
     const img = t.match(/data-entry-img="([^"]+)"/)?.[1]
-    if (name && img && !out.some(c => c.name === name)) out.push({ name, img })
+    const num = strip(t.match(/data-entry-amount="([^"]*)"/)?.[1])
+    if (name && img && !out.some(c => c.name === name)) out.push({ name, img, num })
   }
   return out
 }
+
+/** [{ key, value: [...] }] → { 去掉冒号的 key: 清洗后的 HTML } */
+const kv = list => Object.fromEntries((Array.isArray(list) ? list : []).map(a => [strip(a.key).replace(/[：:]$/, ''), clean([].concat(a.value ?? []).join(''))]))
+const widget = (content, test) => (Array.isArray(content?.widgets) ? content.widgets : []).find(test)
 
 const chip = (k, v) => {
   const t = strip(v)
@@ -229,7 +236,34 @@ function item (entry, content) {
   }
 }
 
+/** 新版敌人：monster_base_info（属性 / 掉落 / 预览图）+ 攻略方法 / 背景故事 / 数据参考模块 */
+function newMonster (entry, content) {
+  const base = widget(content, w => w.id === 'monster_base_info')?.data
+  if (!base) return null
+  const attr = kv(base.attr)
+  const story = widget(content, w => w.module === '背景故事')?.data || {}
+  const stats = kv(widget(content, w => w.id === 'equipment_growth_info' && w.module.includes('数据'))?.data?.list?.[0]?.attr)
+  const drops = (base.feedback || []).map(f => ({ name: strip(f.nickname), img: f.img, num: Number(f.amount) > 0 ? String(f.amount) : '' }))
+  return {
+    kind: '原魔',
+    name: entry.title,
+    stars: 0,
+    summary: strip(story.rich_text),
+    art: { mode: 'frame', images: [base.list?.[0]?.image || content.icon] },
+    chips: [chip('类型', tag(entry, '类型')), chip('元素', attr['元素'] || tag(entry, '元素')), chip('所在区域', attr['所在区域'])],
+    left: textBlock('攻略方法', clean(widget(content, w => w.module === '攻略方法')?.data?.rich_text), 'grow'),
+    right: iconsBlock('掉落物品', drops) + rowsBlock('', [
+      { k: '生命值', html: stats['生命值'] },
+      { k: '抗性', html: stats['抗性信息'] },
+      { k: '攻击方式', html: attr['攻击方式'] },
+      { k: '备注', html: kv(story.attr)['备注'] }
+    ], 'grow')
+  }
+}
+
 function monster (entry, content) {
+  const fresh = newMonster(entry, content)
+  if (fresh) return fresh
   const parts = parseParts(content).filter(p => p.tmplKey === 'monster')
   const main = parts.find(p => p.partKey === 'main')?.data
   if (!main) return null
@@ -249,7 +283,41 @@ function monster (entry, content) {
   }
 }
 
+/** 新版秘境：role_base_info（名称 / 消耗 / 场景图）+ 简述 / 秘境位置 / 秘境详情（每个难度一张表：信息、奖励、敌人） */
+function newDomain (entry, content) {
+  const base = widget(content, w => w.id === 'role_base_info')?.data
+  const levels = widget(content, w => w.id === 'multi_table' && w.module.includes('详情'))?.data?.tables || []
+  if (!base && !levels.length) return null
+  const attr = kv(base?.attr)
+  const intro = widget(content, w => w.id === 'multi_table' && w.module.includes('简述'))?.data?.tables?.[0]?.row?.[0]?.[0]
+  const maps = (Array.isArray(content.widgets) ? content.widgets : []).filter(w => w.id === 'map_desc').flatMap(w => (w.data?.list || []).map(x => x.image))
+  const top = levels[levels.length - 1] || {}
+  const [infoHtml = '', rewardHtml = '', enemyHtml = ''] = (top.row || []).map(r => String([].concat(r)[0] ?? ''))
+  const info = {}
+  for (const m of infoHtml.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
+    const t = strip(m[1])
+    const i = t.search(/[：:]/)
+    if (i > 0) info[t.slice(0, i).trim()] = t.slice(i + 1).trim()
+  }
+  const lv = strip(top.tab_name).match(/lv\s*\d+/i)?.[0]
+  const pos = rewardHtml.indexOf('概率掉落')
+  const drops = entryCards(pos >= 0 ? rewardHtml.slice(pos) : rewardHtml).map(d => ({ ...d, num: '' }))
+  const enemies = entryCards(enemyHtml).map(e => ({ name: `${e.name}${e.num ? ` ×${e.num}` : ''}`, img: e.img }))
+  return {
+    kind: '',
+    name: `${strip(base?.name) || entry.title}${lv ? `·${lv}` : ''}`,
+    stars: 0,
+    summary: strip(intro),
+    art: { mode: 'frame', images: [base?.avatar_pc, ...maps].filter(isUrl).slice(0, 2) },
+    chips: [chip('推荐元素', info['推荐元素'] || tag(entry, '推荐元素')), chip('冒险等级', info['冒险等级要求']), chip('秘境消耗', attr['消耗'] || tag(entry, '秘境消耗'))],
+    left: iconsBlock('', enemies, 'round'),
+    right: rowsBlock('', [{ k: '地脉异常', html: esc(info['地脉异常'] || '') }, { k: '挑战特性', html: esc(info['挑战特性'] || '') }], 'grow') + iconsBlock('可能掉落', drops)
+  }
+}
+
 function domain (entry, content) {
+  const fresh = newDomain(entry, content)
+  if (fresh) return fresh
   const parts = parseParts(content)
   const mission = parts.find(p => p.tmplKey === 'mission' && p.partKey === 'main')?.data
   if (!mission) return null
