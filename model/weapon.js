@@ -139,8 +139,21 @@ function extractCharacters (html) {
     name = decode(name).trim()
     if (name && img && !out.some(c => c.name === name)) out.push({ name, img })
   }
-  for (const [tag] of h.matchAll(/<span\b[^>]*class="[^"]*custom-entry-wrapper[^"]*"[^>]*>/g)) {
-    push(tag.match(/data-entry-name="([^"]+)"/)?.[1], tag.match(/data-entry-img="([^"]+)"/)?.[1])
+  const scan = str => {
+    for (const [tag] of str.matchAll(/<span\b[^>]*class="[^"]*custom-entry-wrapper[^"]*"[^>]*>/g)) {
+      push(tag.match(/data-entry-name="([^"]+)"/)?.[1], tag.match(/data-entry-img="([^"]+)"/)?.[1])
+    }
+  }
+  // 新接口常把“角色名称/描述”做成表格：只看每行第一格（角色名称列），
+  // 避免把“描述”列里提到的圣遗物、武器等链接也当成推荐角色
+  const rows = [...h.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)]
+  if (rows.length) {
+    for (const [, row] of rows) {
+      const first = row.match(/<td[^>]*>([\s\S]*?)<\/td>/i)?.[1]
+      if (first) scan(first)
+    }
+  } else {
+    scan(h)
   }
   if (!out.length) {
     for (const m of h.matchAll(/<a\b[^>]*entry-material-box[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[\s\S]*?class="name">([^<]+)</g)) push(m[2], m[1])
