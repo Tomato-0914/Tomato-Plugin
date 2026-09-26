@@ -159,6 +159,11 @@ function foodItems (content) {
   })
 }
 
+/** 食物页里的各品质料理名（奇怪 / 美味 / 特色料理等），用来建立搜索别名 */
+export function dishNames (content) {
+  return foodItems(content).map(i => i.name).filter(Boolean)
+}
+
 function food (entry, content) {
   const title = strip(entry.title)
   const tierOf = n => n.startsWith('奇怪的') ? '奇怪' : n.startsWith('美味的') ? '美味' : n === title ? '普通' : '特色'
