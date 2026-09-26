@@ -44,7 +44,7 @@ const rowsBlock = (title, rows, cls = '') => {
 }
 const iconsBlock = (title, items, cls = '') => {
   const body = items.filter(i => i.name || i.img).map(i =>
-    `<div class="icon-cell"><div class="tile">${isUrl(i.img) ? `<img src="${esc(i.img)}">` : ''}${i.num ? `<span class="num">${esc(i.num)}</span>` : ''}</div><span class="icon-name">${esc(i.name)}</span></div>`
+    `<div class="icon-cell"><div class="tile">${i.img ? `<img src="${esc(i.img)}">` : ''}${i.num ? `<span class="num">${esc(i.num)}</span>` : ''}</div><span class="icon-name">${esc(i.name)}</span></div>`
   ).join('')
   return body ? block(title, `<div class="icons">${body}</div>`, cls) : ''
 }
@@ -133,7 +133,7 @@ function splitEffect (html) {
 }
 
 /** 食物各品质：旧版每个品质一个 food 模板，新版每个品质一个 material_base_info 组件；iconOf 给旧版材料补图标 */
-function foodItems (content, iconOf = () => '') {
+function foodItems (content, iconOf = () => '', matIcon = () => '') {
   const old = parseParts(content).filter(p => p.tmplKey === 'food' && p.data?.name).map(p => p.data)
   if (old.length) {
     return old.map(d => ({
@@ -141,7 +141,7 @@ function foodItems (content, iconOf = () => '') {
       img: d.image,
       star: Number(d.rate) || 0,
       desc: clean(d.description),
-      mats: (d.material || []).map(m => ({ name: strip(m.name), num: strip(m.num), img: m.icon || iconOf(strip(m.name), m.url) })),
+      mats: (d.material || []).map(m => ({ name: strip(m.name), num: strip(m.num), img: matIcon(strip(m.name)) || m.icon || iconOf(strip(m.name), m.url) })),
       proceed: strip(d.proceed),
       ...splitEffect(d.effect)
     }))
@@ -157,7 +157,7 @@ function foodItems (content, iconOf = () => '') {
       img: d.img || d.image,
       star: Number(d.star) || 0,
       desc: clean(f['描述']),
-      mats: materialList(d.materials?.value),
+      mats: materialList(d.materials?.value).map(m => ({ ...m, img: matIcon(m.name) || m.img })),
       proceed: '',
       effect: eff.effect,
       obtain: strip(f['获得方式']) || eff.obtain,
@@ -194,10 +194,10 @@ function dishCard (entry, content, dish, normal) {
   }
 }
 
-function food (entry, content, { dish, iconOf } = {}) {
+function food (entry, content, { dish, iconOf, matIcon } = {}) {
   const title = strip(entry.title)
   const tierOf = n => n.startsWith('奇怪的') ? '奇怪' : n.startsWith('美味的') ? '美味' : n === title ? '普通' : '特色'
-  const items = foodItems(content, iconOf)
+  const items = foodItems(content, iconOf, matIcon)
     .map(i => ({ ...i, tier: tierOf(i.name) }))
     .sort((a, b) => FOOD_TIERS.indexOf(a.tier) - FOOD_TIERS.indexOf(b.tier))
   if (!items.length) return null
@@ -237,13 +237,13 @@ function item (entry, content) {
 }
 
 /** 新版敌人：monster_base_info（属性 / 掉落 / 预览图）+ 攻略方法 / 背景故事 / 数据参考模块 */
-function newMonster (entry, content) {
+function newMonster (entry, content, { matIcon = () => '' } = {}) {
   const base = widget(content, w => w.id === 'monster_base_info')?.data
   if (!base) return null
   const attr = kv(base.attr)
   const story = widget(content, w => w.module === '背景故事')?.data || {}
   const stats = kv(widget(content, w => w.id === 'equipment_growth_info' && w.module.includes('数据'))?.data?.list?.[0]?.attr)
-  const drops = (base.feedback || []).map(f => ({ name: strip(f.nickname), img: f.img, num: Number(f.amount) > 0 ? String(f.amount) : '' }))
+  const drops = (base.feedback || []).map(f => { const name = strip(f.nickname); return { name, img: matIcon(name) || f.img, num: Number(f.amount) > 0 ? String(f.amount) : '' } })
   return {
     kind: '原魔',
     name: entry.title,
@@ -261,16 +261,17 @@ function newMonster (entry, content) {
   }
 }
 
-function monster (entry, content) {
-  const fresh = newMonster(entry, content)
+function monster (entry, content, opts = {}) {
+  const fresh = newMonster(entry, content, opts)
   if (fresh) return fresh
+  const matIcon = opts.matIcon || (() => '')
   const parts = parseParts(content).filter(p => p.tmplKey === 'monster')
   const main = parts.find(p => p.partKey === 'main')?.data
   if (!main) return null
   const bg = parts.find(p => p.partKey === 'background')?.data || {}
   const raid = parts.find(p => p.partKey === 'raid')?.data || {}
   const fields = Object.fromEntries((main.fields || []).map(x => [strip(x.name), clean(x.value)]))
-  const drops = (main.material || []).map(m => ({ name: strip(m.name), img: m.icon, num: strip(m.num) }))
+  const drops = (main.material || []).map(m => { const name = strip(m.name); return { name, img: matIcon(name) || m.icon, num: strip(m.num) } })
   return {
     kind: '原魔',
     name: strip(main.name) || entry.title,
@@ -284,7 +285,7 @@ function monster (entry, content) {
 }
 
 /** 新版秘境：role_base_info（名称 / 消耗 / 场景图）+ 简述 / 秘境位置 / 秘境详情（每个难度一张表：信息、奖励、敌人） */
-function newDomain (entry, content) {
+function newDomain (entry, content, { matIcon = () => '' } = {}) {
   const base = widget(content, w => w.id === 'role_base_info')?.data
   const levels = widget(content, w => w.id === 'multi_table' && w.module.includes('详情'))?.data?.tables || []
   if (!base && !levels.length) return null
@@ -301,7 +302,7 @@ function newDomain (entry, content) {
   }
   const lv = strip(top.tab_name).match(/lv\s*\d+/i)?.[0]
   const pos = rewardHtml.indexOf('概率掉落')
-  const drops = entryCards(pos >= 0 ? rewardHtml.slice(pos) : rewardHtml).map(d => ({ ...d, num: '' }))
+  const drops = entryCards(pos >= 0 ? rewardHtml.slice(pos) : rewardHtml).map(d => ({ ...d, img: matIcon(d.name) || d.img, num: '' }))
   const enemies = entryCards(enemyHtml).map(e => ({ name: `${e.name}${e.num ? ` ×${e.num}` : ''}`, img: e.img }))
   return {
     kind: '',
@@ -315,8 +316,8 @@ function newDomain (entry, content) {
   }
 }
 
-function domain (entry, content) {
-  const fresh = newDomain(entry, content)
+function domain (entry, content, opts = {}) {
+  const fresh = newDomain(entry, content, opts)
   if (fresh) return fresh
   const parts = parseParts(content)
   const mission = parts.find(p => p.tmplKey === 'mission' && p.partKey === 'main')?.data

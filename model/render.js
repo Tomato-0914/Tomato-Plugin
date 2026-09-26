@@ -118,6 +118,36 @@ export function artifactPieceArt (setName, slot, dir) {
   return ''
 }
 
+const materialIndexCache = new Map()
+
+/** 扫一遍喵喵插件材料图标目录（boss/gem/monster/normal/specialty/talent/weapon/weekly 等子目录），建立 名称 → 本地文件路径 的索引；每个进程只扫一次 */
+function materialIndex (dir) {
+  if (materialIndexCache.has(dir)) return materialIndexCache.get(dir)
+  const map = new Map()
+  try {
+    const root = path.resolve(process.cwd(), dir)
+    for (const sub of fs.readdirSync(root, { withFileTypes: true })) {
+      if (!sub.isDirectory()) continue
+      const subDir = path.join(root, sub.name)
+      for (const file of fs.readdirSync(subDir)) {
+        if (file.endsWith('.webp')) map.set(file.slice(0, -5), path.join(subDir, file))
+      }
+    }
+  } catch {}
+  materialIndexCache.set(dir, map)
+  return map
+}
+
+/**
+ * 材料 / 掉落物图标：优先用喵喵插件的本地透明图（武器突破材料、地区特产、怪物掉落等），没有再用观测枢自己的图标兜底。
+ * 喵喵插件没有食物材料图，食物走这条路查不到，照常用观测枢的图。
+ */
+export function materialIcon (name, dir) {
+  if (!dir || !name) return ''
+  const file = materialIndex(dir).get(name)
+  return file ? pathToFileURL(file).href : ''
+}
+
 /** 渲染精度：配置 renderScale（50~300）换算成缩放倍数 */
 export function renderScale () {
   const n = Number(getConfig().renderScale)
@@ -164,7 +194,8 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
   const r = cfg.render || {}
   const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
   const pieceArt = (setName, slot) => artifactPieceArt(setName, slot, cfg.artifact?.artDir)
-  const card = weapon ? null : buildCard(entry, content, { dish, iconOf, pieceArt })
+  const matIcon = name => materialIcon(name, cfg.material?.artDir)
+  const card = weapon ? null : buildCard(entry, content, { dish, iconOf, pieceArt, matIcon })
 
   let view
   let tplFile = TPL
@@ -179,6 +210,7 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
       width: SIZE.weapon[0],
       height: SIZE.weapon[1],
       stars: Array.from({ length: Math.min(weapon.rate || 0, 5) }, (_, i) => i),
+      materials: (weapon.materials || []).map(m => ({ ...m, img: matIcon(m.name) || m.img })),
       days: materialDays(weapon.materials, wc.domainDays),
       obtainWide: String(weapon.obtain || '').length > 6,
       blanks: Array.from({ length: Math.max(0, 6 - chars.length) }, (_, i) => i),

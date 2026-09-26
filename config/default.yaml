@@ -65,6 +65,11 @@ artifact:
   # 喵喵插件的圣遗物部件立绘目录（相对 Yunzai 根目录，透明底），找不到对应图片时用观测枢图标
   artDir: plugins/miao-plugin/resources/meta-gs/artifact/imgs
 
+material:
+  # 喵喵插件的材料/掉落物图标目录（相对 Yunzai 根目录，透明底），涵盖武器突破材料、地区特产、怪物掉落等；
+  # 用在武器升级材料、敌人掉落物品、秘境可能掉落上；找不到（含食物加工材料，喵喵插件没有）时用观测枢图标
+  artDir: plugins/miao-plugin/resources/meta-gs/material
+
 render:
   quality: 90         # JPEG 质量
   timeout: 60000      # 等待页面和图片加载的上限（毫秒）
