@@ -54,7 +54,7 @@ const tagsBlock = (title, items, cls = '') => {
 }
 const piecesBlock = pieces => pieces.length
   ? `<div class="pieces">${pieces.map(p =>
-    `<div class="piece"><div class="piece-art">${isUrl(p.img) ? `<img src="${esc(p.img)}">` : ''}</div><div class="piece-name">${esc(p.name)}</div><div class="piece-slot">${esc(p.slot)}</div><div class="piece-desc">${esc(p.desc)}</div></div>`
+    `<div class="piece"><div class="piece-art">${p.img ? `<img src="${esc(p.img)}">` : ''}</div><div class="piece-name">${esc(p.name)}</div><div class="piece-slot">${esc(p.slot)}</div><div class="piece-desc">${esc(p.desc)}</div></div>`
   ).join('')}</div>`
   : ''
 
@@ -363,7 +363,7 @@ function domain (entry, content) {
 
 const SET_NAMES = { 1: '一件套', 2: '两件套', 4: '四件套' }
 
-function artifact (entry, content) {
+function artifact (entry, content, { pieceArt } = {}) {
   const ws = Array.isArray(content?.widgets) ? content.widgets : []
   const info = {}
   let pieces = []
@@ -382,6 +382,8 @@ function artifact (entry, content) {
     const group = (ill?.data?.data || []).find(g => strip(g.name_).includes('角色'))
     chars = (group?.data || []).filter(x => x?.name && isUrl(x.image)).map(x => ({ name: strip(x.name), img: x.image }))
   }
+  // 部件立绘优先用喵喵插件的本地透明图，没有再用观测枢的图标兜底
+  if (pieceArt) pieces = pieces.map(p => ({ ...p, img: pieceArt(entry.title, p.slot) || p.img }))
   if (!pieces.length && !Object.keys(info).length) return null
 
   const rarity = strip(info['稀有度'])
