@@ -106,9 +106,21 @@ export function matchEntry (query, index, { aliases = new Map(), priority = [] }
   return { type: 'none', suggest: uniqueByTitle(suggest).slice(0, 5) }
 }
 
-/** 查询词正好是某个分类名（如“武器”）时，返回该分类下的全部标题 */
+const STAR_WORDS = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5 }
+
+/** 条目星级：取目录标签里最高的「X星」（圣遗物同时有四星、五星），没有返回 0 */
+export function starOf (entry) {
+  let star = 0
+  for (const { v } of entry.tags || []) {
+    const m = String(v).match(/^([一二三四五1-5])\s*星$/)
+    if (m) star = Math.max(star, STAR_WORDS[m[1]] || Number(m[1]))
+  }
+  return star
+}
+
+/** 查询词正好是某个分类名（如“武器”）时，返回该分类下的条目：星级从高到低，同星级保持目录顺序（从新到旧） */
 export function listCategory (query, index) {
   const q = norm(query)
-  const titles = index.filter(e => e.path.some(p => norm(p) === q)).map(e => e.title)
-  return titles.length ? [...new Set(titles)] : null
+  const list = uniqueByTitle(index.filter(e => e.path.some(p => norm(p) === q)))
+  return list.length ? list.sort((a, b) => starOf(b) - starOf(a)) : null
 }

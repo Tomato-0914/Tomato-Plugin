@@ -27,6 +27,9 @@ strictTitles: [
 # 生成图片前先回一句“正在生成”；图片不缓存，每次查询都会重新生成
 renderTip: true
 
+# 图片渲染精度（50~300，默认 100）；数值越大图片越清晰，体积也越大
+renderScale: 100
+
 # 图片张数超过这个值时改用合并转发
 forwardThreshold: 2
 

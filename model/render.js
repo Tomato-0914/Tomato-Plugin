@@ -102,11 +102,18 @@ export function weaponArt (weapon, dir) {
   return { image: weapon.image || '', local: false, artType: type || '' }
 }
 
+/** 渲染精度：配置 renderScale（50~300）换算成缩放倍数 */
+export function renderScale () {
+  const n = Number(getConfig().renderScale)
+  return Math.min(300, Math.max(50, Number.isFinite(n) && n > 0 ? n : 100)) / 100
+}
+
 async function doRender (gameKey, entry, view, r, tplFile = TPL) {
   const rd = await getRenderer()
+  const scale = renderScale()
   const pageCfg = JSON.stringify({
     remove: r.removeSelectors || [],
-    imgProcess: r.imageProcess || '',
+    imgProcess: String(r.imageProcess || '').replace(/w_(\d+)/, (_, w) => `w_${Math.round(w * Math.max(1, scale))}`),
     imgHosts: r.imageHosts || []
   }).replace(/</g, '\\u003c')
 
@@ -117,10 +124,11 @@ async function doRender (gameKey, entry, view, r, tplFile = TPL) {
     imgType: 'jpeg',
     quality: r.quality || 90,
     multiPage: tplFile === TPL,
-    multiPageHeight: r.pageHeight || 3500,
+    multiPageHeight: Math.round((r.pageHeight || 3500) * scale),
     pageGotoParams: { waitUntil: 'networkidle0', timeout: r.timeout || 60000 },
     width: r.width || 760,
     ...view,
+    bodyStyle: scale === 1 ? '' : `transform:scale(${scale});transform-origin:0 0`,
     pageCfg
   }
 
