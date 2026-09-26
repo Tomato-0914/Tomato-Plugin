@@ -105,6 +105,19 @@ export function weaponArt (weapon, dir) {
   return { image: weapon.image || '', local: false, artType: type || '' }
 }
 
+/** 圣遗物部件槽位 → 喵喵插件图片文件名（1~5 固定对应生之花/死之羽/时之沙/空之杯/理之冠） */
+const ARTIFACT_SLOT_IDX = { 生之花: 1, 死之羽: 2, 时之沙: 3, 空之杯: 4, 理之冠: 5 }
+
+/** 圣遗物部件立绘：优先用喵喵插件的本地图（透明底），没有再用观测枢的图标兜底 */
+export function artifactPieceArt (setName, slot, dir) {
+  const idx = ARTIFACT_SLOT_IDX[slot]
+  if (dir && idx && setName) {
+    const file = path.resolve(process.cwd(), dir, setName, `${idx}.webp`)
+    if (fs.existsSync(file)) return pathToFileURL(file).href
+  }
+  return ''
+}
+
 /** 渲染精度：配置 renderScale（50~300）换算成缩放倍数 */
 export function renderScale () {
   const n = Number(getConfig().renderScale)
@@ -150,7 +163,8 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
   const cfg = getConfig()
   const r = cfg.render || {}
   const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
-  const card = weapon ? null : buildCard(entry, content, { dish, iconOf })
+  const pieceArt = (setName, slot) => artifactPieceArt(setName, slot, cfg.artifact?.artDir)
+  const card = weapon ? null : buildCard(entry, content, { dish, iconOf, pieceArt })
 
   let view
   let tplFile = TPL

@@ -61,6 +61,10 @@ weapon:
     周二/五/日: [凛风奔狼, 雾海云间, 鸣神御灵, 绿洲花园, 纯圣露滴, 谵妄圣主]
     周三/六/日: [狮牙斗士, 漆黑陨铁, 今昔剧画, 烈日威权, 无垢之海, 神合秘烟]
 
+artifact:
+  # 喵喵插件的圣遗物部件立绘目录（相对 Yunzai 根目录，透明底），找不到对应图片时用观测枢图标
+  artDir: plugins/miao-plugin/resources/meta-gs/artifact/imgs
+
 render:
   quality: 90         # JPEG 质量
   timeout: 60000      # 等待页面和图片加载的上限（毫秒）
