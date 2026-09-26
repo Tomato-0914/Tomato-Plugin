@@ -93,10 +93,15 @@ function materialInfo (content) {
 
 const FOOD_TIERS = ['奇怪', '普通', '美味', '特色']
 
-/** 加工材料 HTML（新版带图标，形如 <img>鸟蛋*4）拆成 [{ name, num, img }] */
+/** 加工材料 HTML 拆成 [{ name, num, img }]：优先读词条卡片的 data-entry-*，其次按 <img>鸟蛋*4 的文字 */
 function materialList (html) {
   const h = String(html ?? '')
   const out = []
+  for (const [t] of h.matchAll(/<span\b[^>]*class="[^"]*custom-entry-wrapper[^"]*"[^>]*>/g)) {
+    const name = strip(t.match(/data-entry-name="([^"]+)"/)?.[1])
+    if (name) out.push({ name, num: strip(t.match(/data-entry-amount="([^"]+)"/)?.[1]), img: t.match(/data-entry-img="([^"]+)"/)?.[1] })
+  }
+  if (out.length) return out
   for (const m of h.matchAll(/<img[^>]*src="([^"]+)"[^>]*>([\s\S]*?)(?=<img|$)/gi)) {
     const t = strip(m[2]).match(/^(.+?)\s*[*×xX]\s*(\d+)/)
     if (t) out.push({ img: m[1], name: t[1].trim(), num: t[2] })
