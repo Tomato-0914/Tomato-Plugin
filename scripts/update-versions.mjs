@@ -12,8 +12,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = path.join(ROOT, 'resources', 'version', 'gs.yaml')
 const RAW = 'https://raw.githubusercontent.com/theBowja/genshin-db/main/src/data'
 
-/** 分类：genshin-db 的英文目录名 → 输出 yaml 里的中文分类名 */
-const CATEGORIES = { weapons: '武器', artifacts: '圣遗物', foods: '食物' }
+/** 分类：genshin-db 的英文目录名 → 输出 yaml 里的中文分类名（domains 名字和观测枢对不上，没收） */
+const CATEGORIES = { weapons: '武器', artifacts: '圣遗物', foods: '食物', enemies: '敌人', materials: '背包' }
 
 async function fetchJson (url) {
   const res = await fetch(url, { signal: AbortSignal.timeout(20000) })

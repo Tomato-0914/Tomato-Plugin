@@ -85,7 +85,7 @@ renderScale: 150
 
 ## 版本表
 
-分类列表里的上线版本数据来自 [genshin-db](https://github.com/theBowja/genshin-db)（MIT License），观测枢本身不提供版本信息。武器、圣遗物、食物三类各自的版本号，按优先级从低到高：
+分类列表里的上线版本数据来自 [genshin-db](https://github.com/theBowja/genshin-db)（MIT License），观测枢本身不提供版本信息。武器、圣遗物、食物、敌人、背包（秘境因为 genshin-db 命名和观测枢对不上，暂时没收）各自的版本号，按优先级从低到高：
 
 1. `resources/version/gs.yaml`：插件自带的一份底表，装好即用，不联网也有数据
 2. `data/Tomato-Plugin/gs/versions.json`：插件启动后自动在后台联网同步的最新数据，每天固定时间（默认零点）检查一次 genshin-db 有没有更新，没变化就什么也不做；直连 GitHub 不通时会自动换 jsdelivr 镜像试一次；同步失败只记日志，不影响正常查询

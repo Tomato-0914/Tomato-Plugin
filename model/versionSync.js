@@ -2,8 +2,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { dataRoot, pluginName, ensureDir } from './config.js'
 
-/** genshin-db（MIT License, Copyright (c) 2020 theBowja）的分类目录名 → 版本表里的中文分类名 */
-const SOURCES = { weapons: '武器', artifacts: '圣遗物', foods: '食物' }
+/**
+ * genshin-db（MIT License, Copyright (c) 2020 theBowja）的分类目录名 → 版本表里的中文分类名。
+ * genshin-db 的 domains 只收录了「炼武秘境」这类挑战关卡（如“炼武秘境：云垢 I”），
+ * 名字对不上观测枢秘境条目（如“云叅林”），加了也是白搭，所以没收。
+ */
+const SOURCES = { weapons: '武器', artifacts: '圣遗物', foods: '食物', enemies: '敌人', materials: '背包' }
 
 /** 两个镜像轮流试，国内直连 GitHub 不稳的话走 jsdelivr */
 const MIRRORS = [
