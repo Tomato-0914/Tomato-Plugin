@@ -22,8 +22,9 @@ api:
   timeout: 15000      # 单次请求超时（毫秒）
   indexTTL: 21600     # 目录缓存（秒），6 小时
   detailTTL: 43200    # 详情缓存（秒），12 小时
-  # 内容 id 大于等于这个值走新版 hoyowiki 接口，否则走旧版 blackboard 接口
-  detailIdSplit: 500000
+  # 内容 id 大于等于这个值先走新版 hoyowiki 接口，否则先走旧版 blackboard 接口；
+  # 默认 0 表示全部先走新接口，查不到时自动退回旧接口
+  detailIdSplit: 0
 
 games:
   gs:
@@ -31,7 +32,7 @@ games:
     base: https://api-static.mihoyo.com/common/blackboard/ys_obc/v1
     appSn: ys_obc
     channelId: 189
-    # 新版词条接口（id >= detailIdSplit 的条目）
+    # 新版词条接口（默认所有条目优先使用）
     newBase: https://api-takumi.mihoyo.com/hoyowiki/genshin/wapi
     # 同名条目出现在多个分类时，按这个顺序优先
     categoryPriority: [角色, 武器, 圣遗物]

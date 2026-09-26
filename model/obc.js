@@ -6,7 +6,7 @@ import { modulesToContents } from './wiki.js'
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 /** 详情缓存结构版本，解析结果的结构变了就加一，旧缓存会自动重新拉取 */
-const DETAIL_VERSION = 3
+const DETAIL_VERSION = 4
 
 /**
  * 目录条目的 ext 里带筛选标签，形如
@@ -174,20 +174,32 @@ export class ObcSource {
   }
 
   /**
-   * 观测枢内容有两套接口：旧条目（id < 500000）走 blackboard 的
-   * content/info，新条目（id >= 500000）走 hoyowiki 的 entry_page。
-   * 按 id 分段选主接口；主接口报「内容不存在」时换另一套再试一次，
-   * 这样即使将来 id 分段变化也不会挂。
+   * 观测枢内容有两套接口：hoyowiki 的 entry_page（新）和 blackboard 的 content/info（旧）。
+   * id 大于等于 detailIdSplit 的条目先走新接口（默认 0，即全部先走新接口）；
+   * 新接口报「内容不存在」或没有组件数据时换旧接口，旧接口报「内容不存在」时换新接口。
    */
   async fetchDetail (id) {
-    const split = getConfig().api?.detailIdSplit ?? 500000
-    const primaryNew = Number(id) >= split
-    try {
-      return primaryNew ? await this.getWikiDetail(id) : await this.getObsDetail(id)
-    } catch (err) {
-      if (String(err.message).includes('-2010')) {
-        return primaryNew ? this.getObsDetail(id) : this.getWikiDetail(id)
+    const split = getConfig().api?.detailIdSplit ?? 0
+    const missing = err => String(err?.message).includes('-2010')
+    if (Number(id) < split) {
+      try {
+        return await this.getObsDetail(id)
+      } catch (err) {
+        if (missing(err)) return this.getWikiDetail(id)
+        throw err
       }
+    }
+    let fresh
+    try {
+      fresh = await this.getWikiDetail(id)
+      if (fresh.widgets?.length) return fresh
+    } catch (err) {
+      if (!missing(err)) throw err
+    }
+    try {
+      return await this.getObsDetail(id)
+    } catch (err) {
+      if (fresh) return fresh
       throw err
     }
   }
