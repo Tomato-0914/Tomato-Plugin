@@ -178,12 +178,32 @@ export function itemType (entry) {
   return (entry.tags || []).find(t => t.k === '道具类型')?.v || ''
 }
 
-/** 查询词是某个道具类型（如“小道具”，也可只写开头如“任务”，需唯一）时，返回 { type, list }；否则 null */
+/** 游戏背包页签 → 观测枢道具类型；“xx地区特产”都归材料，没列到的新类型单独成组 */
+export const BAG_TABS = {
+  养成道具: ['角色培养素材', '角色与武器培养素材', '角色天赋素材', '角色突破素材', '角色经验素材', '武器突破素材', '武器强化材料', '武器精炼材料', '圣遗物强化素材'],
+  材料: ['素材', '食材', '鱼饵', '锻造用矿石', '武器制作素材', '炼金素材', '道具锻造素材', '家园摆设制作素材'],
+  贵重道具: ['贵重道具', '消耗品'],
+  任务: ['任务道具'],
+  小道具: ['小道具']
+}
+
+/** 背包条目所属的游戏页签；没有道具类型返回空字符串 */
+export function itemTab (entry) {
+  const type = itemType(entry)
+  if (!type) return ''
+  const tab = Object.keys(BAG_TABS).find(k => BAG_TABS[k].includes(type))
+  return tab || (type.endsWith('地区特产') ? '材料' : type)
+}
+
+/** 查询词是背包页签（如“养成道具”“任务”）或观测枢道具类型（如“角色天赋素材”，可只写开头，需唯一）时，返回 { type, list }；否则 null */
 export function listItemType (query, index, versions = {}) {
   const q = norm(query)
   if (!q) return null
-  const types = [...new Set(index.map(itemType).filter(Boolean))]
-  const starts = types.filter(t => norm(t).startsWith(q))
-  const type = types.find(t => norm(t) === q) || (starts.length === 1 ? starts[0] : '')
-  return type ? { type, list: sortEntries(index.filter(e => itemType(e) === type), versions) } : null
+  const pick = (names, of) => {
+    const starts = names.filter(t => norm(t).startsWith(q))
+    const name = names.find(t => norm(t) === q) || (starts.length === 1 ? starts[0] : '')
+    return name ? { type: name, list: sortEntries(index.filter(e => of(e) === name), versions) } : null
+  }
+  return pick([...new Set(index.map(itemTab).filter(Boolean))], itemTab) ||
+    pick([...new Set(index.map(itemType).filter(Boolean))], itemType)
 }
