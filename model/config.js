@@ -7,6 +7,14 @@ export const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.ur
 export const pluginName = path.basename(pluginRoot)
 export const dataRoot = path.join(process.cwd(), 'data', pluginName)
 
+/** 插件文件夹改名后，把旧数据目录 data/obc-plugin 挪到新名字下，缓存和特色料理索引不用重建 */
+const LEGACY_DATA = path.join(process.cwd(), 'data', 'obc-plugin')
+if (dataRoot !== LEGACY_DATA && !fs.existsSync(dataRoot) && fs.existsSync(LEGACY_DATA)) {
+  try {
+    fs.renameSync(LEGACY_DATA, dataRoot)
+  } catch {}
+}
+
 const DEFAULT_FILE = path.join(pluginRoot, 'config', 'default.yaml')
 const USER_FILE = path.join(pluginRoot, 'config', 'config.yaml')
 

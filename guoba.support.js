@@ -47,11 +47,11 @@ function setPath (obj, key, value) {
 export function supportGuoba () {
   return {
     pluginInfo: {
-      name: 'obc-plugin',
+      name: 'Tomato-Plugin',
       title: '观测枢图鉴',
       author: '@Tomato-0914',
       authorLink: 'https://github.com/Tomato-0914',
-      link: 'https://github.com/Tomato-0914/obc-plugin',
+      link: 'https://github.com/Tomato-0914/Tomato-Plugin',
       isV3: true,
       isV2: false,
       description: '实时拉取米游社观测枢数据渲染原神图鉴',
