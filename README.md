@@ -1,4 +1,4 @@
-# obc-plugin · 观测枢图鉴
+# Tomato-Plugin · 观测枢图鉴
 
 Yunzai-Bot（TRSS-Yunzai / Miao-Yunzai）图鉴插件。查询时实时读取米游社观测枢的数据，用 Yunzai 自带的渲染器出图，不需要下载图库，官方更新后这边自动跟上。
 
@@ -6,7 +6,15 @@ Yunzai-Bot（TRSS-Yunzai / Miao-Yunzai）图鉴插件。查询时实时读取米
 
 ## 安装
 
-把整个 `obc-plugin` 文件夹放到 Yunzai 根目录的 `plugins/` 下，重启 Yunzai。
+在 Yunzai 根目录执行，然后重启 Yunzai：
+
+```bash
+git clone https://github.com/Tomato-0914/Tomato-Plugin.git ./plugins/Tomato-Plugin
+```
+
+之后发 `#更新图鉴` 即可在线更新。
+
+从旧版 `plugins/obc-plugin` 迁移过来的：按上面的命令装好新的、删掉旧的 `plugins/obc-plugin`，再把旧文件夹里自己写的 `config/config.yaml`、`config/alias/`、`config/version/` 拷到新文件夹。缓存目录 `data/obc-plugin` 首次启动时会自动改名为 `data/Tomato-Plugin`，不用重建。
 
 不需要额外装依赖：用到的 `yaml` 和渲染器都是 Yunzai 自带的。需要 Node.js 18 或更高版本（用到了内置 `fetch`）。
 
@@ -72,7 +80,7 @@ renderScale: 150
 
 名称的一部分（比如“雾切”→ 雾切之回光）不用写，插件会自动模糊匹配。
 
-食物的特色料理和奇怪 / 美味品质（比如「普茹斯蒂司」「奇怪的致水神」）在观测枢里没有单独的条目。插件启动后会在后台抓取会产出特色料理的食物，建立料理名索引（存在 `data/obc-plugin/gs/dishes.json`），之后直接搜料理名，会出这道料理自己的卡片（自己的图、描述、效果和获得方式，并注明所属的原料理）。首次安装时索引要几分钟才能建完。
+食物的特色料理和奇怪 / 美味品质（比如「普茹斯蒂司」「奇怪的致水神」）在观测枢里没有单独的条目。插件启动后会在后台抓取会产出特色料理的食物，建立料理名索引（存在 `data/Tomato-Plugin/gs/dishes.json`），之后直接搜料理名，会出这道料理自己的卡片（自己的图、描述、效果和获得方式，并注明所属的原料理）。首次安装时索引要几分钟才能建完。
 
 ## 版本表
 
@@ -85,7 +93,7 @@ renderScale: 150
 
 ## 缓存
 
-都在 Yunzai 根目录的 `data/obc-plugin/gs/` 下：
+都在 Yunzai 根目录的 `data/Tomato-Plugin/gs/` 下（目录名跟插件文件夹名一致）：
 
 - `index.json`：目录，默认 6 小时刷新一次
 - `detail/`：条目详情（新旧两套接口拉下来后都规范成同一结构存这里），默认 12 小时
