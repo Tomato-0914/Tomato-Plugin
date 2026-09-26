@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from '../model/config.js'
 import { ObcSource } from '../model/obc.js'
-import { matchEntry, listCategory, getAliases, norm } from '../model/match.js'
+import { matchEntry, listCategory, getAliases, getWeakAliases, norm } from '../model/match.js'
 import { renderEntry } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 
@@ -44,21 +44,29 @@ function iconResolver (index) {
   return (name, url) => byId.get(String(url ?? '').match(/content\/(\d+)/)?.[1])?.icon || byTitle.get(norm(name))?.icon || ''
 }
 
+/** 可用的别名：去掉与标题同名的；plain（消息既不带 # 也不带「图鉴」）时再去掉弱别名 */
+function userAliases (index, plain) {
+  const { byTitle } = indexMaps(index)
+  const weak = plain ? getWeakAliases(GAME) : new Set()
+  return new Map([...getAliases(GAME)].filter(([k]) => !byTitle.has(k) && !weak.has(k)))
+}
+
 /** 不带「图鉴」的消息先粗筛：只有精确标题、别名、料理名才值得走完整匹配 */
-function mayHit (q, index) {
+function mayHit (q, index, plain) {
   const k = norm(q)
-  return !!k && (indexMaps(index).byTitle.has(k) || getAliases(GAME).has(k) || dishAliases(index).has(k))
+  if (!k) return false
+  if (indexMaps(index).byTitle.has(k) || dishAliases(index).has(k)) return true
+  return getAliases(GAME).has(k) && !(plain && getWeakAliases(GAME).has(k))
 }
 
 /** Atlas 等插件自己的「图鉴」管理指令，不当作查询 */
 const FOREIGN = /^[#/]*((github)?(原神|星铁|绝区零|洛克|rc)?图鉴(插件)?(强行)?(强制)?升级|(强制)?更新图鉴)$/
 
 /** 在目录里查找条目：自带别名 + 用户别名 + 特色料理别名；按料理名命中时带上 dish */
-function lookup (q, index) {
+function lookup (q, index, plain = false) {
   const game = getConfig().games[GAME]
   const dishes = dishAliases(index)
-  const { byTitle } = indexMaps(index)
-  const user = new Map([...getAliases(GAME)].filter(([k]) => !byTitle.has(k)))
+  const user = userAliases(index, plain)
   const aliases = new Map([...[...dishes].map(([k, v]) => [k, v.title]), ...user])
   const res = matchEntry(q, index, { aliases, priority: game.categoryPriority || [] })
   const k = norm(q)
@@ -176,11 +184,11 @@ export class ObcGenshin extends plugin {
   }
 
   async queryBare () {
-    return this.query(this.e.msg.replace(/^[#/]/, ''), { bare: true })
+    return this.query(this.e.msg.replace(/^[#/]/, ''), { bare: true, plain: !/^[#/]/.test(this.e.msg) })
   }
 
-  /** bare：只在命中条目时回复（partial 允许名称的一部分）；loose：没命中时放行。两者都不提示“没找到” */
-  async query (q, { bare = false, loose = false, partial = false } = {}) {
+  /** bare：只在命中条目时回复（partial 允许名称的一部分）；loose：没命中时放行。两者都不提示“没找到”；plain：不认弱别名 */
+  async query (q, { bare = false, loose = false, partial = false, plain = false } = {}) {
     q = String(q).trim()
     if (!q || q.length > 30) return false
 
@@ -192,8 +200,8 @@ export class ObcGenshin extends plugin {
       return bare ? false : this.reply(`观测枢目录拉取失败：${err.message}`)
     }
 
-    if (bare && !partial && !mayHit(q, index)) return false
-    const res = lookup(q, index)
+    if (bare && !partial && !mayHit(q, index, plain)) return false
+    const res = lookup(q, index, plain)
 
     if (res.type === 'hit' && skipped(res.entry)) return false
     if (bare) return res.type === 'hit' && (partial || res.via !== 'partial') ? this.sendEntry(res.entry, false, res.dish) : false

@@ -9,27 +9,42 @@ export const norm = s => String(s ?? '')
 
 const aliasCache = new Map()
 
-/** 别名表：resources/alias/<game>.yaml（自带）+ config/alias/<game>.yaml（你自己加的） */
+/** 别名表：resources/alias/<game>.yaml（自带）+ config/alias/<game>.yaml（你自己加的）；以 # 开头的是弱别名 */
 export function getAliases (game) {
+  return loadAliases(game).map
+}
+
+/** 弱别名的规范化键：只在消息带 # 或「图鉴」时生效 */
+export function getWeakAliases (game) {
+  return loadAliases(game).weak
+}
+
+function loadAliases (game) {
   const files = [
     path.join(pluginRoot, 'resources', 'alias', `${game}.yaml`),
     path.join(pluginRoot, 'config', 'alias', `${game}.yaml`)
   ]
   const sig = files.map(mtime).join('|')
   const hit = aliasCache.get(game)
-  if (hit?.sig === sig) return hit.map
+  if (hit?.sig === sig) return hit
 
   const map = new Map()
+  const weak = new Set()
   for (const file of files) {
     if (!fs.existsSync(file)) continue
     for (const [title, list] of Object.entries(readYaml(file))) {
       for (const alias of [].concat(list ?? [])) {
-        if (alias !== null && alias !== '') map.set(norm(alias), String(title))
+        if (alias === null || alias === '') continue
+        const k = norm(alias)
+        map.set(k, String(title))
+        if (String(alias).startsWith('#')) weak.add(k)
+        else weak.delete(k)
       }
     }
   }
-  aliasCache.set(game, { sig, map })
-  return map
+  const res = { sig, map, weak }
+  aliasCache.set(game, res)
+  return res
 }
 
 function similarity (a, b) {
