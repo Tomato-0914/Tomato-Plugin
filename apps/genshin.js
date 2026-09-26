@@ -5,6 +5,7 @@ import { ObcSource } from '../model/obc.js'
 import { matchEntry, listCategory, listItemType, itemTab, BAG_TABS, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
 import { renderEntry } from '../model/render.js'
 import { dishNames } from '../model/card.js'
+import { syncVersions, scheduleVersionSync } from '../model/versionSync.js'
 
 const GAME = 'gs'
 const source = new ObcSource(GAME)
@@ -15,6 +16,9 @@ const prefetchDishes = index => Promise.resolve(index || source.getIndex())
   .catch(err => logger.warn(`[${pluginName}] 特色料理索引补全失败：${err.message}`))
 source.onRefresh = prefetchDishes
 setTimeout(prefetchDishes, 15000)
+
+/** 每天后台自动从 genshin-db 同步一次武器/圣遗物/食物的上线版本，失败不影响正常查询 */
+scheduleVersionSync(GAME)
 
 /** 目录派生的查找表（id → 条目、规范化标题 → 条目），按目录对象缓存，避免每条消息都遍历全部标题 */
 const indexCache = new WeakMap()
@@ -89,6 +93,7 @@ const HELP = [
   '#图鉴分类：看看有哪些分类',
   '#图鉴更新：重新拉取目录（主人）',
   '#图鉴强制更新：清空全部数据缓存（主人）',
+  '#图鉴更新版本表：立即从 genshin-db 同步武器/圣遗物/食物的上线版本（主人）',
   '#图鉴清除缓存：清空全部条目详情缓存（主人）',
   '#图鉴清除缓存护摩之杖：只清这一条的详情缓存（主人）',
   '#图鉴调试护摩之杖：导出原始数据（主人）'
@@ -251,6 +256,7 @@ export class ObcGenshin extends plugin {
     const rule = [
       { reg: '^[#/](原神)?图鉴(帮助|help|菜单|功能)?$', fnc: 'help' },
       { reg: '^#(原神)?图鉴(强制)?更新$', fnc: 'update', permission: 'master' },
+      { reg: '^#(原神)?图鉴更新版本表$', fnc: 'updateVersions', permission: 'master' },
       { reg: '^#(原神)?图鉴调试\\s*\\S.*$', fnc: 'debug', permission: 'master' },
       { reg: '^#(原神)?图鉴清除缓存.*$', fnc: 'clearCache', permission: 'master' },
       { reg: '^#(原神)?图鉴(分类|目录)$', fnc: 'categories' },
@@ -360,6 +366,17 @@ export class ObcGenshin extends plugin {
       return this.reply(`目录已更新，共 ${index.length} 条${force ? '；详情缓存已清空' : ''}`)
     } catch (err) {
       return this.reply(`更新失败：${err.message}`)
+    }
+  }
+
+  /** 立即从 genshin-db 同步一次版本表，方便刚出新武器/圣遗物时马上更新，不用等到当天自动同步的时间 */
+  async updateVersions () {
+    try {
+      const { changed, counts } = await syncVersions(GAME)
+      const line = Object.entries(counts).map(([k, n]) => `${k} ${n}`).join('，')
+      return this.reply(`版本表${changed ? '已更新' : '已是最新'}：${line}`)
+    } catch (err) {
+      return this.reply(`版本表同步失败：${err.message}`)
     }
   }
 

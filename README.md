@@ -84,9 +84,13 @@ renderScale: 150
 
 ## 版本表
 
-分类列表里的上线版本来自 `resources/version/gs.yaml`（武器、圣遗物、食物），整理自 [genshin-db](https://github.com/theBowja/genshin-db)（MIT License），观测枢本身不提供版本信息。
+分类列表里的上线版本数据来自 [genshin-db](https://github.com/theBowja/genshin-db)（MIT License），观测枢本身不提供版本信息。武器、圣遗物、食物三类各自的版本号，按优先级从低到高：
 
-这份表每周一由 GitHub Actions（`.github/workflows/update-versions.yml`）自动从 genshin-db 重新拉取，有变化就开一个 PR，合并后 `#更新图鉴` 即可用上；也可以在仓库的 Actions 页手动触发。新版本刚上线、genshin-db 还没收录时，条目会排在最前的「未收录版本」组，等它更新后下一轮自动跑就会补上。想自己补充或修正，写到 `config/version/gs.yaml`（不会被这个自动流程覆盖）：
+1. `resources/version/gs.yaml`：插件自带的一份底表，装好即用，不联网也有数据
+2. `data/Tomato-Plugin/gs/versions.json`：插件启动后自动在后台联网同步的最新数据，每天固定时间（默认零点）检查一次 genshin-db 有没有更新，没变化就什么也不做；直连 GitHub 不通时会自动换 jsdelivr 镜像试一次；同步失败只记日志，不影响正常查询
+3. `config/version/gs.yaml`：你自己补充或修正的，优先级最高，不会被自动同步覆盖
+
+新版本刚上线、genshin-db 还没收录时，条目会排在分类列表最前的「未收录版本」组，等它更新后插件下一次自动同步就会补上。`#图鉴更新版本表` 可以立即触发一次同步，不用等到当天自动同步的时间（主人）。手动补充写到 `config/version/gs.yaml`：
 
 ```yaml
 武器:
