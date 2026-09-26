@@ -135,11 +135,11 @@ async function doRender (gameKey, entry, view, r, tplFile = TPL) {
 }
 
 /** 渲染一个条目，返回图片 Buffer 数组；不缓存图片，每次都重新生成 */
-export async function renderEntry (gameKey, entry, content, { onStart } = {}) {
+export async function renderEntry (gameKey, entry, content, { onStart, dish } = {}) {
   const cfg = getConfig()
   const r = cfg.render || {}
   const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
-  const card = weapon ? null : buildCard(entry, content)
+  const card = weapon ? null : buildCard(entry, content, { dish })
 
   let view
   let tplFile = TPL
@@ -192,7 +192,7 @@ export async function renderEntry (gameKey, entry, content, { onStart } = {}) {
 
   view.time = new Date().toLocaleString('zh-CN', { hour12: false })
 
-  const key = `${gameKey}:${entry.id}`
+  const key = `${gameKey}:${entry.id}:${dish || ''}`
   if (inflight.has(key)) return inflight.get(key)
 
   const job = (async () => {

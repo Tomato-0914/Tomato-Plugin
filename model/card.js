@@ -164,7 +164,30 @@ export function dishNames (content) {
   return foodItems(content).map(i => i.name).filter(Boolean)
 }
 
-function food (entry, content) {
+const matsBlock = mats => {
+  const list = mats.filter(m => m.name && m.name !== '无')
+  return list.some(m => m.img)
+    ? iconsBlock('加工材料', list)
+    : tagsBlock('加工材料', list.map(m => `${m.name}${m.num ? ` ×${m.num}` : ''}`))
+}
+
+/** 单独一道料理（特色料理 / 奇怪 / 美味品质）的卡片，注明所属的原料理 */
+function dishCard (entry, content, dish, normal) {
+  const title = strip(entry.title)
+  return {
+    kind: '食物',
+    name: dish.name,
+    stars: dish.star || normal.star || starOf(tag(entry, '食物星级', '星级')),
+    summary: `「${title}」的${dish.tier === '特色' ? '特色料理' : `${dish.tier}品质`}`,
+    art: { mode: 'circle', images: [dish.img || normal.img || content.icon] },
+    chips: [chip('获得方式', dish.obtain || dish.proceed), chip('食谱获取', dish.recipe || normal.recipe)],
+    left: textBlock('', dish.desc, 'grow') + iconsBlock('原料理', [{ name: title, img: normal.img }], 'round'),
+    right: rowsBlock('料理效果', [{ k: '效果', html: dish.effect.map(t => `<p>${esc(t)}</p>`).join('') }], 'grow') +
+      matsBlock(dish.mats.length ? dish.mats : normal.mats)
+  }
+}
+
+function food (entry, content, { dish } = {}) {
   const title = strip(entry.title)
   const tierOf = n => n.startsWith('奇怪的') ? '奇怪' : n.startsWith('美味的') ? '美味' : n === title ? '普通' : '特色'
   const items = foodItems(content)
@@ -172,12 +195,13 @@ function food (entry, content) {
     .sort((a, b) => FOOD_TIERS.indexOf(a.tier) - FOOD_TIERS.indexOf(b.tier))
   if (!items.length) return null
   const normal = items.find(i => i.tier === '普通') || items[0]
+  const focus = dish && items.find(i => i.name === dish)
+  if (focus && focus !== normal) return dishCard(entry, content, focus, normal)
   const single = items.length === 1
   const rows = items.map(i => ({
     k: single ? '效果' : i.tier,
     html: (i.tier === '特色' && !single ? `<p><b>${esc(i.name)}</b>${i.obtain ? `（${esc(i.obtain)}）` : ''}</p>` : '') + i.effect.map(t => `<p>${esc(t)}</p>`).join('')
   }))
-  const mats = normal.mats.filter(m => m.name && m.name !== '无')
   const specials = single ? [] : items.filter(i => i.tier === '特色').map(i => ({ name: i.name, img: i.img }))
   return {
     kind: '食物',
@@ -186,9 +210,7 @@ function food (entry, content) {
     art: { mode: 'circle', images: [normal.img || content.icon] },
     chips: [chip('获得方式', normal.obtain || normal.proceed), chip('食谱获取', normal.recipe)],
     left: textBlock('', normal.desc, 'grow') + iconsBlock('特色料理', specials, 'round'),
-    right: rowsBlock('料理效果', rows, 'grow') + (mats.some(m => m.img)
-      ? iconsBlock('加工材料', mats)
-      : tagsBlock('加工材料', mats.map(m => `${m.name}${m.num ? ` ×${m.num}` : ''}`)))
+    right: rowsBlock('料理效果', rows, 'grow') + matsBlock(normal.mats)
   }
 }
 
@@ -314,11 +336,11 @@ function artifact (entry, content) {
 
 const BUILDERS = { 食物: food, 背包: item, 敌人: monster, 秘境: domain, 圣遗物: artifact }
 
-/** 按目录分类生成专属卡片数据；没有对应分类或解析失败返回 null，走通用模板 */
-export function buildCard (entry, content) {
+/** 按目录分类生成专属卡片数据；opts.dish 指定只看某一道料理；没有对应分类或解析失败返回 null，走通用模板 */
+export function buildCard (entry, content, opts = {}) {
   const key = Object.keys(BUILDERS).find(k => entry.path.includes(k))
   if (!key) return null
-  const view = BUILDERS[key](entry, content)
+  const view = BUILDERS[key](entry, content, opts)
   if (!view) return null
   view.chips = view.chips.filter(Boolean)
   return view
