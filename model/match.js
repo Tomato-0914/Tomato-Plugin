@@ -52,11 +52,12 @@ const versionCache = new Map()
 
 /**
  * 版本表，返回 { 分类: Map(规范化名称 → 版本号) }，按优先级从低到高：
- * resources/version/<game>.yaml（插件自带） → data/<插件名>/<game>/versions.json（后台自动从 genshin-db 同步的） → config/version/<game>.yaml（你自己加的）
+ * data/<插件名>/<game>/versions.json（后台自动从 genshin-db 同步的） → config/version/<game>.yaml（你自己加的）
+ * 不再带一份插件自带的底表：那份文件要跟插件代码一起进 git，运行时同步的数据没法写回去，还得单独维护，
+ * 不如干脆不带，装好后台自动同步（启动后 1 分钟内，或发 #图鉴更新）一次就有数据了。
  */
 export function getVersions (game) {
   const files = [
-    path.join(pluginRoot, 'resources', 'version', `${game}.yaml`),
     versionsFile(game),
     path.join(pluginRoot, 'config', 'version', `${game}.yaml`)
   ]
