@@ -8,7 +8,7 @@ const USER_FILE = path.join(pluginRoot, 'config', 'config.yaml')
 /** 锅巴表单项：field 用点号表示嵌套配置 */
 const schemas = [
   { component: 'Divider', label: '基础设置' },
-  { field: 'priority', label: '插件优先级', component: 'InputNumber', bottomHelpMessage: '数字越小越先响应，默认 -10；修改后需重启', componentProps: { placeholder: '-10' } },
+  { field: 'priority', label: '插件优先级', component: 'InputNumber', bottomHelpMessage: '数字越小越先响应，默认 -100（比喵喵插件的默认优先级低很多）；修改后需重启', componentProps: { placeholder: '-100' } },
   { field: 'bareMatch', label: '直接查询', component: 'Switch', bottomHelpMessage: '开启后不带“图鉴”也能查，如 #护摩之杖、护摩之杖' },
   { field: 'renderTip', label: '生成提示', component: 'Switch', bottomHelpMessage: '生成图片前先回复“正在生成”' },
   { field: 'renderScale', label: '渲染精度', component: 'InputNumber', required: true, bottomHelpMessage: '50~300，默认 100；数值越大图片越清晰，体积也越大', componentProps: { min: 50, max: 300, placeholder: '100' } },
