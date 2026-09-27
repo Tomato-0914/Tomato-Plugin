@@ -297,6 +297,8 @@ export class ObcGenshin extends plugin {
   }
 
   async queryBare () {
+    // e.msg 不是字符串时（比如纯图片/卡片消息），正则 test() 会把它当成字符串 "undefined"/"null" 误匹配上这条兜底规则
+    if (typeof this.e.msg !== 'string') return false
     return this.query(this.e.msg.replace(/^[#/]/, ''), { bare: true, plain: !/^[#/]/.test(this.e.msg) })
   }
 
