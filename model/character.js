@@ -10,6 +10,47 @@ const richify = s => clean(String(s ?? '').replace(/\n{2,}/g, '<br><br>').replac
 /** 天赋/命座序号前缀（天赋1（普通攻击） → 普通攻击） */
 const tagOf = s => strip(s).replace(/^天赋\d*/, '').replace(/[（）]/g, '').trim()
 
+/**
+ * 有些角色（命座之间带联动效果的）命之座表格不是一命一行，而是全部 6 个命座挤在同一个单元格
+ * 的一长串 <p> 里：每个命座开头是一段带图标的 <p>（图标 + 命座名连在一起），后面跟若干段说明 <p>，
+ * 直到下一个带图标的 <p> 开始下一个命座。按「是否带图标」分段，而不是简单按行数取。
+ */
+function splitMergedConstellations (html) {
+  const paras = [...String(html ?? '').matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map(m => m[1])
+  const groups = []
+  let cur = null
+  for (const p of paras) {
+    if (/<img\b|custom-image-view/i.test(p)) {
+      if (cur) groups.push(cur)
+      cur = {
+        icon: p.match(/data-image-url="([^"]+)"/)?.[1] || p.match(/<img[^>]*src="([^"]+)"/)?.[1] || '',
+        name: strip(p),
+        descParas: []
+      }
+    } else if (cur && strip(p)) {
+      cur.descParas.push(p)
+    }
+  }
+  if (cur) groups.push(cur)
+  return groups.map((g, i) => ({ level: i + 1, name: g.name, icon: g.icon, desc: clean(g.descParas.map(p => `<p>${p}</p>`).join('')) }))
+    .filter(c => c.name)
+}
+
+/** 命之座：多数角色一命一行（两列：图标+名字、说明）；少数角色全挤在一个单元格里，按段落重新切开 */
+function extractConstellations (table) {
+  const rows = table?.row || []
+  const firstRowCells = [].concat(rows[0] ?? [])
+  if (firstRowCells.length >= 2) {
+    return rows.map((r, i) => {
+      const [imgCell, descCell] = [].concat(r)
+      const icon = String(imgCell ?? '').match(/data-image-url="([^"]+)"/)?.[1] || String(imgCell ?? '').match(/<img[^>]*src="([^"]+)"/)?.[1] || ''
+      return { level: i + 1, name: strip(imgCell), icon, desc: richify(descCell) }
+    }).filter(c => c.name)
+  }
+  if (firstRowCells.length === 1) return splitMergedConstellations(firstRowCells[0])
+  return []
+}
+
 function widgetsOf (content) {
   return Array.isArray(content?.widgets) ? content.widgets : []
 }
@@ -39,11 +80,7 @@ function extractNewCharacter (content) {
   })).filter(t => t.name)
 
   const constTable = (ws.find(w => w.id === 'multi_table' && w.module === '命之座')?.data?.tables || [])[0]
-  const constellations = (constTable?.row || []).map((r, i) => {
-    const [imgCell, descCell] = [].concat(r)
-    const icon = String(imgCell ?? '').match(/data-image-url="([^"]+)"/)?.[1] || String(imgCell ?? '').match(/<img[^>]*src="([^"]+)"/)?.[1] || ''
-    return { level: i + 1, name: strip(imgCell), icon, desc: richify(descCell) }
-  }).filter(c => c.name)
+  const constellations = extractConstellations(constTable)
 
   const recTables = ws.find(w => w.id === 'recommend')?.data?.tables || []
   const recommend = kind => {
