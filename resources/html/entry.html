@@ -128,7 +128,7 @@
       var src = (img.getAttribute('src') || '').trim();
       if (src.indexOf('//') === 0) src = 'https:' + src;
       if (!/^https?:\/\//i.test(src)) { img.remove(); return; }
-      if (cfg.imgProcess && src.indexOf('x-oss-process') < 0) {
+      if (cfg.imgProcess && src.indexOf('x-oss-process') < 0 && !/\.gif($|\?)/i.test(src)) {
         try {
           if ((cfg.imgHosts || []).indexOf(new URL(src).hostname) >= 0) {
             src += (src.indexOf('?') < 0 ? '?' : '&') + 'x-oss-process=' + cfg.imgProcess;
