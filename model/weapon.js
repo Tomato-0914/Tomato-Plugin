@@ -104,7 +104,7 @@ export function tagRarity (mats) {
   return mats
 }
 
-function formatNum (n) {
+export function formatNum (n) {
   const t = String(n ?? '').trim()
   const v = Number(t)
   if (!t || !Number.isFinite(v)) return t

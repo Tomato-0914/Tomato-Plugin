@@ -71,6 +71,11 @@ material:
   # 用在武器升级材料、敌人掉落物品、秘境可能掉落上；找不到（含食物加工材料，喵喵插件没有）时用观测枢图标
   artDir: plugins/miao-plugin/resources/meta-gs/material
 
+character:
+  # 喵喵插件的角色资源目录（相对 Yunzai 根目录），用角色立绘（imgs/gacha.webp）和命之座图标（icons/cons-N.webp）；
+  # 找不到（新角色喵喵还没更新，或者没装喵喵插件）时用观测枢自己的图
+  artDir: plugins/miao-plugin/resources/meta-gs/character
+
 render:
   quality: 90         # JPEG 质量
   timeout: 60000      # 等待页面和图片加载的上限（毫秒）

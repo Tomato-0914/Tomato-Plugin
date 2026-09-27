@@ -1,5 +1,5 @@
 import { sanitizeHtml } from './sanitize.js'
-import { tagRarity } from './weapon.js'
+import { tagRarity, formatNum } from './weapon.js'
 
 const strip = s => String(s ?? '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
 const clean = s => sanitizeHtml(String(s ?? ''))
@@ -26,7 +26,7 @@ function extractNewCharacter (content) {
   const ascList = ws.find(w => w.id === 'role_ascension')?.data?.list || []
   const matSrc = ascList[0]?.materials || []
   const materials = tagRarity(matSrc.filter(m => m?.nickname).map(m => ({
-    name: strip(m.nickname), img: m.img || '', num: String(m.amount ?? '')
+    name: strip(m.nickname), img: m.img || '', num: formatNum(m.amount)
   })))
   const topAttr = ascList[ascList.length - 1]?.attr || []
   const stats = topAttr.map(a => ({ key: strip(a.key), value: strip(flat(a.value)) })).filter(s => s.key && s.value)
@@ -109,7 +109,7 @@ function extractOldCharacter (content) {
 
   const matSrc = breach?.attr?.[0]?.material || []
   const materials = tagRarity(matSrc.filter(m => m?.name).map(m => ({
-    name: strip(m.name), img: m.icon || '', num: strip(m.num).replace(/^\*/, '')
+    name: strip(m.name), img: m.icon || '', num: formatNum(strip(m.num).replace(/^\*/, ''))
   })))
 
   const talents = (Array.isArray(skill?.attr) ? skill.attr : []).map(t => ({
