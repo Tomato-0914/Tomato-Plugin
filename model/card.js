@@ -86,16 +86,26 @@ function materialInfo (content) {
   if (main) {
     const d = main.data
     const fields = {}
-    for (const a of Array.isArray(d.attr) ? d.attr : []) fields[strip(a.key)] = clean([].concat(a.value ?? []).join(''))
-    return { name: strip(d.name), image: d.img || d.image || content.icon, star: Number(d.star) || 0, fields }
+    const raw = {}
+    for (const a of Array.isArray(d.attr) ? d.attr : []) {
+      const key = strip(a.key)
+      raw[key] = [].concat(a.value ?? []).join('')
+      fields[key] = clean(raw[key])
+    }
+    return { name: strip(d.name), image: d.img || d.image || content.icon, star: Number(d.star) || 0, fields, raw }
   }
   const part = parseParts(content).find(p => p.tmplKey === 'material' && p.partKey === 'main')
   if (!part) return null
   const d = part.data || {}
   const fields = {}
-  for (const c of Array.isArray(d.content) ? d.content : []) fields[strip(c.name)] = clean(c.content)
+  const raw = {}
+  for (const c of Array.isArray(d.content) ? d.content : []) {
+    const key = strip(c.name)
+    raw[key] = c.content
+    fields[key] = clean(c.content)
+  }
   if (d.proceed) fields['获得方式'] = clean(d.proceed)
-  return { name: strip(d.name), image: d.image || content.icon, star: 0, fields }
+  return { name: strip(d.name), image: d.image || content.icon, star: 0, fields, raw }
 }
 
 const FOOD_TIERS = ['奇怪', '普通', '美味', '特色']
@@ -221,10 +231,25 @@ function food (entry, content, { dish, iconOf, matIcon } = {}) {
   }
 }
 
-function item (entry, content) {
+/** 字段里带词条链接/图标的（比如“锻造材料”）改成和食物加工材料一样的小图标格子；纯文字字段保持原样 */
+function splitMaterialFields (fields, raw, matIcon = () => '') {
+  const rows = []
+  const blocks = []
+  for (const [k, html] of Object.entries(fields)) {
+    if (k === '获得方式') continue
+    const r = raw[k]
+    const list = r && /<img\b|custom-entry-wrapper|entry-material-box/i.test(r) ? materialList(r).map(m => ({ ...m, img: matIcon(m.name) || m.img })) : []
+    if (list.length) blocks.push(iconsBlock(k, list))
+    else rows.push({ k, html })
+  }
+  return { rows, blocks }
+}
+
+function item (entry, content, { matIcon } = {}) {
   const info = materialInfo(content)
   if (!info) return null
   const f = info.fields
+  const { rows, blocks } = splitMaterialFields(f, info.raw || {}, matIcon)
   return {
     kind: tag(entry, '道具类型') || '道具',
     name: info.name || entry.title,
@@ -232,7 +257,7 @@ function item (entry, content) {
     art: { mode: 'circle', images: [info.image] },
     chips: [chip('获取途径', tag(entry, '获取方式'))],
     left: textBlock('获得方式', f['获得方式'], 'grow'),
-    right: rowsBlock('', Object.entries(f).filter(([k]) => k !== '获得方式').map(([k, html]) => ({ k, html })), 'grow')
+    right: rowsBlock('', rows, 'grow') + blocks.join('')
   }
 }
 
