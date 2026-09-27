@@ -101,7 +101,11 @@ const HELP = [
 
 /** 多条消息：超过 forwardThreshold 或 forward 为 true 时合并转发 */
 async function sendMany (e, msgs, title = '', forward = false) {
-  if (!forward && msgs.length <= (getConfig().forwardThreshold ?? 2)) return e.reply(msgs.length === 1 ? msgs[0] : msgs)
+  if (!forward && msgs.length <= (getConfig().forwardThreshold ?? 2)) {
+    if (msgs.length <= 1) return e.reply(msgs[0])
+    // 纯文本行数组直接拼成一条回复，用换行分开；混了图片等 segment 的数组保持原样按多段发送
+    return e.reply(msgs.every(m => typeof m === 'string') ? msgs.join('\n') : msgs)
+  }
   try {
     if (typeof Bot !== 'undefined' && typeof Bot.makeForwardArray === 'function') return await e.reply(await Bot.makeForwardArray(msgs))
     const { default: common } = await import('../../../lib/common/common.js')
