@@ -4,11 +4,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { getConfig, pluginRoot, pluginName } from './config.js'
 import { sanitizeHtml } from './sanitize.js'
 import { extractWeapon, materialDays } from './weapon.js'
+import { extractCharacter } from './character.js'
 import { buildCard } from './card.js'
 
 const TPL = path.join(pluginRoot, 'resources', 'html', 'entry.html')
 const WTPL = path.join(pluginRoot, 'resources', 'html', 'weapon.html')
 const CTPL = path.join(pluginRoot, 'resources', 'html', 'card.html')
+const ChTPL = path.join(pluginRoot, 'resources', 'html', 'character.html')
 
 let renderer = null
 async function getRenderer () {
@@ -193,9 +195,10 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
   const cfg = getConfig()
   const r = cfg.render || {}
   const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
+  const character = !weapon && entry.path.includes('角色') ? extractCharacter(content) : null
   const pieceArt = (setName, slot) => artifactPieceArt(setName, slot, cfg.artifact?.artDir)
   const matIcon = name => materialIcon(name, cfg.material?.artDir)
-  const card = weapon ? null : buildCard(entry, content, { dish, iconOf, pieceArt, matIcon })
+  const card = (weapon || character) ? null : buildCard(entry, content, { dish, iconOf, pieceArt, matIcon })
 
   let view
   let tplFile = TPL
@@ -214,6 +217,18 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
       days: materialDays(weapon.materials, wc.domainDays),
       obtainWide: String(weapon.obtain || '').length > 6,
       blanks: Array.from({ length: Math.max(0, 6 - chars.length) }, (_, i) => i),
+      time: '',
+      entryId: entry.id
+    }
+  } else if (character) {
+    tplFile = ChTPL
+    view = {
+      ...character,
+      element: character.element || (entry.tags || []).find(t => t.k === '元素')?.v || '',
+      materials: character.materials.map(m => ({ ...m, img: matIcon(m.name) || m.img })),
+      stars: Array.from({ length: Math.min(character.star || 0, 5) }, (_, i) => i),
+      width: 1280,
+      height: 0,
       time: '',
       entryId: entry.id
     }

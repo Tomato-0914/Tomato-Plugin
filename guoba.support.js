@@ -15,7 +15,7 @@ const schemas = [
   { field: 'forwardThreshold', label: '合并转发阈值', component: 'InputNumber', bottomHelpMessage: '图片或消息超过这个条数时改用合并转发', componentProps: { min: 1, max: 20, placeholder: '2' } },
 
   { component: 'Divider', label: '查询范围' },
-  { field: 'skipCategories', label: '不响应的分类', component: 'GTags', bottomHelpMessage: '这些分类交给其他插件处理，默认 角色', componentProps: { allowAdd: true, allowDel: true } },
+  { field: 'skipCategories', label: '不响应的分类', component: 'GTags', bottomHelpMessage: '这些分类交给其他插件处理，默认为空；比如想让角色图鉴继续交给喵喵插件可以加上「角色」', componentProps: { allowAdd: true, allowDel: true } },
   { field: 'bareCategories', label: '可直接查询的分类', component: 'GTags', bottomHelpMessage: '直接发名称只对这些分类生效，其余分类要发 #名称图鉴', componentProps: { allowAdd: true, allowDel: true } },
   { field: 'strictTitles', label: '严格条目', component: 'GTags', bottomHelpMessage: '日常用词或与其他插件指令重名的条目，只认 #名称图鉴 / #图鉴名称', componentProps: { allowAdd: true, allowDel: true } },
 

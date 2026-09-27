@@ -83,7 +83,7 @@ function sameSeries (a, b) {
 }
 
 /** 按材料系列推断稀有度：突破素材 2★ 起，精英怪素材 2★ 起，普通怪素材 1★ 起 */
-function tagRarity (mats) {
+export function tagRarity (mats) {
   let run = -1
   let pos = 0
   let prev = ''

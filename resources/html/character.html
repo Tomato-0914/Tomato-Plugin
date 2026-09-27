@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #F3F1ED;
+    --card: #FAF9F6;
+    --line: #E2D8C7;
+    --line-deep: #D6C8B0;
+    --ink: #2E2A25;
+    --ink-soft: #6F665A;
+    --brown: #9C6B3C;
+    --accent: #9C6B3C;
+    --sans: "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "HarmonyOS Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.7; }
+  #container {
+    position: relative; display: flex; flex-direction: column; width: {{width}}px;{{if height}} height: {{height}}px;{{/if}} padding: 36px 44px 22px; overflow: hidden;
+    background: repeating-linear-gradient(90deg, rgba(120, 100, 70, .025) 0 2px, transparent 2px 26px), var(--bg);
+  }
+
+  /* 外框：双线描边 + 四角圆点 */
+  .frame, .frame::after { position: absolute; border: 1.5px solid var(--line-deep); pointer-events: none; }
+  .frame { inset: 12px; border-radius: 18px; }
+  .frame::after { content: ""; inset: 5px; border-width: 1px; border-color: var(--line); border-radius: 14px; }
+  .corner { position: absolute; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line-deep); background: var(--bg); }
+  .corner.tl { left: 7px; top: 7px; } .corner.tr { right: 7px; top: 7px; }
+  .corner.bl { left: 7px; bottom: 7px; } .corner.br { right: 7px; bottom: 7px; }
+
+  .main { position: relative; display: grid; grid-template-columns: 420px 1fr; gap: 32px; align-items: start; margin-top: 6px; }
+  .left, .right { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+  /* 左侧：圆形法阵 + 角色立绘（配色随元素自动调整） */
+  .art { position: relative; flex: none; height: 400px; }
+  .art svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .art-img { position: absolute; left: 50%; top: 50%; width: 66%; height: 86%; transform: translate(-50%, -50%); object-fit: contain; filter: drop-shadow(0 10px 16px rgba(40, 30, 20, .3)); }
+
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
+  .block { padding: 16px 26px 18px; }
+  .block h2 { margin: 0 0 12px; text-align: center; font-size: 22px; font-weight: 500; color: #4E4841; letter-spacing: 3px; }
+  .rich { font-size: 14px; line-height: 1.8; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .rich p { margin: 0 0 .5em; }
+  .rich p:last-child { margin-bottom: 0; }
+  .rich .hl { color: var(--accent); }
+
+  /* 右侧：标题 */
+  .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .title { margin: 4px 0 0; font-size: 42px; font-weight: 900; letter-spacing: 2px; line-height: 1.2; color: var(--ink); }
+  .title .accent { color: var(--accent); }
+  .brand { flex: none; margin-top: 10px; font-size: 22px; color: var(--accent); letter-spacing: 2px; opacity: .85; }
+  .stars { flex: none; display: flex; gap: 6px; margin: 4px 0 2px; }
+  .stars svg { width: 34px; height: 34px; filter: drop-shadow(0 2px 2px rgba(180, 120, 0, .25)); }
+
+  /* 信息 / 属性方块 */
+  .stats { display: flex; flex-wrap: wrap; gap: 12px 16px; padding: 4px; }
+  .stat { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 14px; background: #fff; border: 1px solid var(--line); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); font-size: 17px; line-height: 1.5; }
+  .stat-k { flex: none; font-weight: 700; color: var(--accent); }
+  .stat-v { text-align: right; color: var(--ink-soft); white-space: nowrap; }
+
+  /* 突破材料 / 推荐装备：小图标网格 */
+  .icons { display: flex; flex-wrap: wrap; gap: 12px 17px; justify-content: center; }
+  .icon-cell { width: 82px; }
+  .tile { position: relative; width: 72px; height: 72px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #6E8FB0, #4F6E8E); box-shadow: 0 2px 4px rgba(40, 30, 20, .18); }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile .num { position: absolute; right: -20px; bottom: 7px; width: 66px; transform: rotate(-45deg); background: #E0473E; color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; }
+  .icon-name { margin-top: 4px; font-size: 12px; line-height: 1.3; text-align: center; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* 天赋 / 命之座：一行一个，图标 + 名称 + 说明 */
+  .skill-list { display: flex; flex-direction: column; }
+  .skill-item { display: flex; gap: 16px; padding: 14px 0; }
+  .skill-item + .skill-item { border-top: 1px dashed var(--line); }
+  .skill-icon { flex: none; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(160deg, #EDE3D3, #D9C7AB); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); }
+  .skill-icon img { width: 72%; height: 72%; object-fit: contain; }
+  .skill-body { flex: 1; min-width: 0; }
+  .skill-head { display: flex; align-items: baseline; gap: 10px; }
+  .skill-name { font-size: 18px; font-weight: 700; color: var(--ink); }
+  .skill-tag { font-size: 12px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 8px; opacity: .85; }
+  .skill-desc { margin-top: 6px; font-size: 13.5px; line-height: 1.75; color: var(--ink-soft); }
+  .const-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; }
+  @media (max-width: 0) {}
+
+  .foot { position: relative; flex: none; margin-top: 20px; display: flex; justify-content: space-between; font-size: 12px; color: #A89E8E; }
+</style>
+</head>
+<body style="{{bodyStyle}}">
+<div id="container" style="--accent: {{accent || '#9C6B3C'}}">
+  <div class="frame"></div>
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#FFE266"/>
+        <stop offset="1" stop-color="#F4A60C"/>
+      </linearGradient>
+      <path id="spark" d="M0 -30 C3 -8 8 -3 30 0 C8 3 3 8 0 30 C-3 8 -8 3 -30 0 C-8 -3 -3 -8 0 -30Z"/>
+      <path id="gem" d="M0 -16 L9 0 L0 16 L-9 0Z"/>
+    </defs>
+  </svg>
+
+  <div class="title-row">
+    <h1 class="title">「{{if title}}<span class="accent">{{title}}</span> · {{/if}}{{name}}」</h1>
+    <span class="brand">观测枢</span>
+  </div>
+  {{if stars.length}}
+  <div class="stars">
+    {{each stars}}<svg viewBox="-16 -16 32 32"><path d="M0 -14 L4.1 -5.6 L13.3 -4.3 L6.7 2.1 L8.2 11.3 L0 7 L-8.2 11.3 L-6.7 2.1 L-13.3 -4.3 L-4.1 -5.6Z" fill="url(#gold)" stroke="#F4B21A" stroke-width="2" stroke-linejoin="round"/></svg>{{/each}}
+  </div>
+  {{/if}}
+
+  <div class="stats">
+    {{if element}}<div class="stat"><span class="stat-k">元素:</span><span class="stat-v">{{element}}</span></div>{{/if}}
+    {{if weaponType}}<div class="stat"><span class="stat-k">武器:</span><span class="stat-v">{{weaponType}}</span></div>{{/if}}
+    {{if constellationName}}<div class="stat"><span class="stat-k">命之座:</span><span class="stat-v">{{constellationName}}</span></div>{{/if}}
+    {{if birthday}}<div class="stat"><span class="stat-k">生日:</span><span class="stat-v">{{birthday}}</span></div>{{/if}}
+    {{if affiliation}}<div class="stat"><span class="stat-k">所属:</span><span class="stat-v">{{affiliation}}</span></div>{{/if}}
+    {{if position}}<div class="stat"><span class="stat-k">定位:</span><span class="stat-v">{{position}}</span></div>{{/if}}
+  </div>
+
+  <div class="main">
+    <section class="left">
+      <div class="art">
+        <svg class="deco" viewBox="0 0 500 420">
+          <g fill="#E7DDCD">
+            <use href="#spark" transform="translate(70 70) scale(1.1)"/>
+            <use href="#spark" transform="translate(438 88) scale(1.2)"/>
+            <use href="#spark" transform="translate(60 350) scale(1)"/>
+            <use href="#spark" transform="translate(440 352) scale(.9)"/>
+            <use href="#spark" transform="translate(120 30) scale(.5)"/>
+            <use href="#spark" transform="translate(395 395) scale(.5)"/>
+          </g>
+          <circle cx="250" cy="210" r="190" fill="none" stroke="var(--accent)" stroke-opacity=".35" stroke-width="2"/>
+          <circle cx="250" cy="210" r="176" fill="var(--accent)" fill-opacity=".08"/>
+          <circle cx="250" cy="210" r="164" fill="none" stroke="#FAF6EF" stroke-width="2"/>
+          <g fill="#F6F1E8" stroke="var(--accent)" stroke-opacity=".45" stroke-width="1.5">
+            <use href="#gem" transform="translate(250 20)"/>
+            <use href="#gem" transform="translate(250 400)"/>
+            <use href="#gem" transform="translate(60 210) rotate(90)"/>
+            <use href="#gem" transform="translate(440 210) rotate(90)"/>
+          </g>
+        </svg>
+        {{if image}}<img class="art-img" src="{{image}}" referrerpolicy="no-referrer">{{/if}}
+      </div>
+
+      {{if cv}}
+      <div class="card block">
+        <h2>角色配音</h2>
+        <div class="rich">{{@ cv}}</div>
+      </div>
+      {{/if}}
+    </section>
+
+    <section class="right">
+      {{if stats.length}}
+      <div class="card block">
+        <h2>90 级基础属性</h2>
+        <div class="stats">
+          {{each stats s}}<div class="stat"><span class="stat-k">{{s.key}}:</span><span class="stat-v">{{s.value}}</span></div>{{/each}}
+        </div>
+      </div>
+      {{/if}}
+
+      {{if materials.length}}
+      <div class="card block">
+        <h2>突破材料</h2>
+        <div class="icons">
+          {{each materials m}}
+          <div class="icon-cell">
+            <div class="tile">{{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}{{if m.num}}<span class="num">×{{m.num}}</span>{{/if}}</div>
+            <span class="icon-name">{{m.name}}</span>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+    </section>
+  </div>
+
+  {{if talents.length}}
+  <div class="card block" style="margin-top: 18px">
+    <h2>天赋</h2>
+    <div class="skill-list">
+      {{each talents t}}
+      <div class="skill-item">
+        <div class="skill-icon">{{if t.icon}}<img src="{{t.icon}}" referrerpolicy="no-referrer">{{/if}}</div>
+        <div class="skill-body">
+          <div class="skill-head"><span class="skill-name">{{t.name}}</span>{{if t.tag}}<span class="skill-tag">{{t.tag}}</span>{{/if}}</div>
+          {{if t.desc}}<div class="skill-desc rich">{{@ t.desc}}</div>{{/if}}
+        </div>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
+  {{if constellations.length}}
+  <div class="card block" style="margin-top: 18px">
+    <h2>命之座</h2>
+    <div class="const-grid">
+      {{each constellations c}}
+      <div class="skill-item">
+        <div class="skill-icon">{{if c.icon}}<img src="{{c.icon}}" referrerpolicy="no-referrer">{{/if}}</div>
+        <div class="skill-body">
+          <div class="skill-head"><span class="skill-name">{{c.level}}命 · {{c.name}}</span></div>
+          {{if c.desc}}<div class="skill-desc rich">{{@ c.desc}}</div>{{/if}}
+        </div>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
+  {{if recommendWeapons.length || recommendArtifacts.length}}
+  <div class="card block" style="margin-top: 18px">
+    <h2>推荐装备</h2>
+    {{if recommendWeapons.length}}
+    <div class="icons">
+      {{each recommendWeapons w}}
+      <div class="icon-cell">
+        <div class="tile">{{if w.img}}<img src="{{w.img}}" referrerpolicy="no-referrer">{{/if}}</div>
+        <span class="icon-name">{{w.name}}</span>
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+    {{if recommendArtifacts.length}}
+    <div class="icons" style="margin-top: 14px">
+      {{each recommendArtifacts a}}
+      <div class="icon-cell">
+        <div class="tile">{{if a.img}}<img src="{{a.img}}" referrerpolicy="no-referrer">{{/if}}</div>
+        <span class="icon-name">{{a.name}}</span>
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  <footer class="foot">
+    <span>数据来源：米游社观测枢，内容版权归米哈游所有</span>
+    <span>{{time}}</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var cfg = {{@ pageCfg}};
+  document.querySelectorAll('img').forEach(function (img) {
+    var src = (img.getAttribute('src') || '').trim();
+    if (/^file:/i.test(src)) return;
+    if (src.indexOf('//') === 0) src = 'https:' + src;
+    if (!/^https?:\/\//i.test(src)) { img.remove(); return; }
+    if (cfg.imgProcess && src.indexOf('x-oss-process') < 0 && !/\.gif($|\?)/i.test(src)) {
+      try {
+        if ((cfg.imgHosts || []).indexOf(new URL(src).hostname) >= 0) {
+          src += (src.indexOf('?') < 0 ? '?' : '&') + 'x-oss-process=' + cfg.imgProcess;
+        }
+      } catch (e) {}
+    }
+    img.setAttribute('referrerpolicy', 'no-referrer');
+    img.addEventListener('error', function () { img.remove(); });
+    img.setAttribute('src', src);
+  });
+})();
+</script>
+</body>
+</html>
