@@ -38,6 +38,7 @@
   .art { position: relative; flex: none; height: 460px; border-radius: 14px; overflow: hidden; border: 2px solid var(--line-deep); background: linear-gradient(160deg, #F4EEE3, #EADFCB); box-shadow: inset 0 0 0 4px #FBF8F2; }
   .art-img { display: block; width: 100%; height: 100%; object-fit: contain; }
   .art-img.local { object-fit: cover; object-position: 50% 6%; }
+  .art-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #A89E8E; letter-spacing: 2px; }
 
   .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
   .block { padding: 16px 26px 18px; }
@@ -128,7 +129,7 @@
   <div class="main">
     <section class="left">
       <div class="art">
-        {{if image}}<img class="art-img{{if local}} local{{/if}}" src="{{image}}" referrerpolicy="no-referrer">{{/if}}
+        {{if image}}<img class="art-img{{if local}} local{{/if}}" src="{{image}}" referrerpolicy="no-referrer">{{else}}<div class="art-empty">未获取到图片</div>{{/if}}
       </div>
 
       {{if cv}}
@@ -247,7 +248,16 @@
       } catch (e) {}
     }
     img.setAttribute('referrerpolicy', 'no-referrer');
-    img.addEventListener('error', function () { img.remove(); });
+    img.addEventListener('error', function () {
+      var art = img.classList.contains('art-img') && img.parentNode;
+      img.remove();
+      if (art && !art.querySelector('img')) {
+        var ph = document.createElement('div');
+        ph.className = 'art-empty';
+        ph.textContent = '未获取到图片';
+        art.appendChild(ph);
+      }
+    });
     img.setAttribute('src', src);
   });
 })();
