@@ -33,9 +33,22 @@
   .main { position: relative; display: grid; grid-template-columns: 420px 1fr; gap: 32px; align-items: start; margin-top: 6px; }
   .left, .right { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
-  /* 左侧：角色立绘（喵喵插件的 gacha/观测枢的图都是不透明的整张图，不是透明立绘，所以用边框卡片装起来，而不是浮在圆形法阵上） */
-  .art { position: relative; flex: none; height: 400px; border-radius: 14px; overflow: hidden; border: 2px solid var(--line-deep); background: linear-gradient(160deg, #F4EEE3, #EADFCB); box-shadow: inset 0 0 0 4px #FBF8F2; }
-  .art-img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  /* 左侧：角色立绘。喵喵的 gacha/观测枢自己的图都是不透明的整张图（背景特效画在图里），
+     不是透明抠图，所以不装边框卡片，改成四周做渐隐遮罩，让图片本身的矩形边界融进页面背景里；
+     背后再叠一张镜像、大幅淡出的同一张图当装饰，呼应观测枢官网详情页的重影效果 */
+  .art { position: relative; flex: none; height: 400px; overflow: hidden; }
+  .art-ghost {
+    position: absolute; left: 50%; top: 48%; width: 150%; height: 120%; transform: translate(-50%, -50%) scaleX(-1);
+    object-fit: contain; opacity: .16;
+    mask-image: radial-gradient(ellipse 19% 58% at 50% 46%, #000 20%, transparent 90%);
+    -webkit-mask-image: radial-gradient(ellipse 19% 58% at 50% 46%, #000 20%, transparent 90%);
+  }
+  .art-img {
+    position: absolute; left: 50%; top: 50%; width: 100%; height: 100%; transform: translate(-50%, -50%);
+    object-fit: contain;
+    mask-image: radial-gradient(ellipse 19% 60% at 50% 48%, #000 48%, transparent 94%);
+    -webkit-mask-image: radial-gradient(ellipse 19% 60% at 50% 48%, #000 48%, transparent 94%);
+  }
 
   .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
   .block { padding: 16px 26px 18px; }
@@ -119,7 +132,10 @@
   <div class="main">
     <section class="left">
       <div class="art">
-        {{if image}}<img class="art-img" src="{{image}}" referrerpolicy="no-referrer">{{/if}}
+        {{if image}}
+        <img class="art-ghost" src="{{image}}" referrerpolicy="no-referrer">
+        <img class="art-img" src="{{image}}" referrerpolicy="no-referrer">
+        {{/if}}
       </div>
 
       {{if cv}}
