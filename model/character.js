@@ -36,6 +36,15 @@ function splitMergedConstellations (html) {
     .filter(c => c.name)
 }
 
+/** 「天赋演示」模块的「角色概述」页签：一段大图 + 几句话的角色简介，取文字部分（去掉大图和行内小图标那段） */
+function extractOverview (ws) {
+  const tables = ws.find(w => w.module === '天赋演示' && w.id === 'multi_table')?.data?.tables || []
+  const table = tables.find(t => strip(t.tab_name).includes('概述'))
+  const html = String([].concat(table?.row?.[0] ?? [])[0] ?? '')
+  const paras = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map(m => m[1]).filter(p => strip(p))
+  return clean(paras.map(p => `<p>${p}</p>`).join(''))
+}
+
 /** 命之座：多数角色一命一行（两列：图标+名字、说明）；少数角色全挤在一个单元格里，按段落重新切开 */
 function extractConstellations (table) {
   const rows = table?.row || []
@@ -97,6 +106,7 @@ function extractNewCharacter (content) {
 
   const cvHtml = String(ws.find(w => w.module === '角色CV')?.data?.rich_text || '').replace(/<p>\s*四国语音展示请下划浏览\s*<\/p>\s*$/i, '')
   const cv = clean(cvHtml)
+  const summary = extractOverview(ws)
 
   return {
     name: strip(base.name),
@@ -111,6 +121,7 @@ function extractNewCharacter (content) {
     star: Number(base.star) || 0,
     image: base.avatar_pc || base.avatar_m || '',
     cv,
+    summary,
     stats,
     materials,
     talents,
@@ -176,6 +187,7 @@ function extractOldCharacter (content) {
     star: Number(main.star) || 0,
     image: main.pc || main.mobile || '',
     cv: '',
+    summary: '',
     stats: [],
     materials,
     talents,

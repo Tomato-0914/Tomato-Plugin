@@ -45,6 +45,7 @@
   .rich p { margin: 0 0 .5em; }
   .rich p:last-child { margin-bottom: 0; }
   .rich .hl { color: var(--accent); }
+  .summary { margin: 8px 0 4px; font-size: 15px; }
 
   /* 右侧：标题 */
   .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -111,6 +112,8 @@
     {{each stars}}<svg viewBox="-16 -16 32 32"><path d="M0 -14 L4.1 -5.6 L13.3 -4.3 L6.7 2.1 L8.2 11.3 L0 7 L-8.2 11.3 L-6.7 2.1 L-13.3 -4.3 L-4.1 -5.6Z" fill="url(#gold)" stroke="#F4B21A" stroke-width="2" stroke-linejoin="round"/></svg>{{/each}}
   </div>
   {{/if}}
+
+  {{if summary}}<div class="summary rich">{{@ summary}}</div>{{/if}}
 
   <div class="stats">
     {{if element}}<div class="stat"><span class="stat-k">元素:</span><span class="stat-v">{{element}}</span></div>{{/if}}
