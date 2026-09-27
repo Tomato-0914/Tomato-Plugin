@@ -119,7 +119,7 @@ function extractNewCharacter (content) {
     affiliation: info['所属'] || '',
     position: info['定位'] || '',
     star: Number(base.star) || 0,
-    image: base.avatar_pc || base.avatar_m || '',
+    image: base.avatar_m || base.avatar_pc || '', // avatar_m 是给手机端用的竖版裁图，比桌面端的宽版 avatar_pc 更贴近我们卡片的窄长展示框
     cv,
     summary,
     stats,
@@ -185,7 +185,7 @@ function extractOldCharacter (content) {
     affiliation: fields['所属'] || '',
     position: '',
     star: Number(main.star) || 0,
-    image: main.pc || main.mobile || '',
+    image: main.mobile || main.pc || '', // 同上，优先用手机端竖版裁图
     cv: '',
     summary: '',
     stats: [],
