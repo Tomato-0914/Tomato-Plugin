@@ -16,7 +16,7 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); }
-  body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.7; }
+  body { font-family: var(--sans); color: var(--ink); font-size: 16px; line-height: 1.7; }
   #container {
     position: relative; display: flex; flex-direction: column; width: {{width}}px;{{if height}} height: {{height}}px;{{/if}} padding: 36px 44px 22px; overflow: hidden;
     background: repeating-linear-gradient(90deg, rgba(120, 100, 70, .025) 0 2px, transparent 2px 26px), var(--bg);
@@ -41,23 +41,23 @@
 
   .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
   .block { padding: 16px 26px 18px; }
-  .block h2 { margin: 0 0 12px; text-align: center; font-size: 22px; font-weight: 500; color: #4E4841; letter-spacing: 3px; }
-  .rich { font-size: 14px; line-height: 1.8; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .block h2 { margin: 0 0 12px; text-align: center; font-size: 24px; font-weight: 500; color: #4E4841; letter-spacing: 3px; }
+  .rich { font-size: 16px; line-height: 1.8; color: var(--ink-soft); overflow-wrap: anywhere; }
   .rich p { margin: 0 0 .5em; }
   .rich p:last-child { margin-bottom: 0; }
   .rich .hl { color: var(--accent); }
 
   /* 右侧：标题 */
   .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-  .title { margin: 4px 0 0; font-size: 42px; font-weight: 900; letter-spacing: 2px; line-height: 1.2; color: var(--ink); }
+  .title { margin: 4px 0 0; font-size: 46px; font-weight: 900; letter-spacing: 2px; line-height: 1.2; color: var(--ink); }
   .title .accent { color: var(--accent); }
-  .brand { flex: none; margin-top: 10px; font-size: 22px; color: var(--accent); letter-spacing: 2px; opacity: .85; }
+  .brand { flex: none; margin-top: 12px; font-size: 24px; color: var(--accent); letter-spacing: 2px; opacity: .85; }
   .stars { flex: none; display: flex; gap: 6px; margin: 4px 0 2px; }
   .stars svg { width: 34px; height: 34px; filter: drop-shadow(0 2px 2px rgba(180, 120, 0, .25)); }
 
   /* 信息 / 属性方块 */
   .stats { display: flex; flex-wrap: wrap; gap: 12px 16px; padding: 4px; }
-  .stat { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 14px; background: #fff; border: 1px solid var(--line); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); font-size: 17px; line-height: 1.5; }
+  .stat { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 16px; background: #fff; border: 1px solid var(--line); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); font-size: 19px; line-height: 1.5; }
   .stat-k { flex: none; font-weight: 700; color: var(--accent); }
   .stat-v { text-align: right; color: var(--ink-soft); white-space: nowrap; }
 
@@ -67,7 +67,7 @@
   .tile { position: relative; width: 72px; height: 72px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #6E8FB0, #4F6E8E); box-shadow: 0 2px 4px rgba(40, 30, 20, .18); }
   .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .tile .num { position: absolute; right: -20px; bottom: 7px; width: 66px; transform: rotate(-45deg); background: #E0473E; color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; }
-  .icon-name { margin-top: 4px; font-size: 12px; line-height: 1.3; text-align: center; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .icon-name { margin-top: 4px; font-size: 13.5px; line-height: 1.3; text-align: center; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
   /* 天赋 / 命之座：一行一个，图标 + 名称 + 说明 */
   .skill-list { display: flex; flex-direction: column; }
@@ -77,9 +77,9 @@
   .skill-icon img { width: 72%; height: 72%; object-fit: contain; }
   .skill-body { flex: 1; min-width: 0; }
   .skill-head { display: flex; align-items: baseline; gap: 10px; }
-  .skill-name { font-size: 18px; font-weight: 700; color: var(--ink); }
-  .skill-tag { font-size: 12px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 8px; opacity: .85; }
-  .skill-desc { margin-top: 6px; font-size: 13.5px; line-height: 1.75; color: var(--ink-soft); }
+  .skill-name { font-size: 20px; font-weight: 700; color: var(--ink); }
+  .skill-tag { font-size: 13px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 8px; opacity: .85; }
+  .skill-desc { margin-top: 6px; font-size: 15px; line-height: 1.8; color: var(--ink-soft); }
   .const-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; }
   @media (max-width: 0) {}
 

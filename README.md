@@ -18,6 +18,8 @@ git clone https://github.com/Tomato-0914/Tomato-Plugin.git ./plugins/Tomato-Plug
 
 不需要额外装依赖：用到的 `yaml` 和渲染器都是 Yunzai 自带的。需要 Node.js 18 或更高版本（用到了内置 `fetch`）。
 
+**必须安装 [喵喵插件](https://github.com/yoimiya-kokomi/miao-plugin)**（放在 `plugins/miao-plugin`）：角色立绘、命之座图标，以及武器立绘、圣遗物部件图、材料/掉落物图标，都是直接用喵喵插件本地的透明图。没装喵喵插件时插件仍然能正常查询，会退回观测枢自己的图兜底，但观测枢的角色图是窄幅卡面图（不是立绘），显示效果会差很多，建议一定装上喵喵插件。
+
 ## 指令
 
 | 指令 | 说明 |
