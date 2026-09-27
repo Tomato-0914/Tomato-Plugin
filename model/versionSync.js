@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { dataRoot, pluginName, ensureDir } from './config.js'
+import { pluginRoot, pluginName, ensureDir, readYaml } from './config.js'
 
 /**
  * genshin-db（MIT License, Copyright (c) 2020 theBowja）的分类目录名 → 版本表里的中文分类名。
@@ -42,13 +42,37 @@ async function loadCategory (dir) {
   return out
 }
 
-/** 存放同步结果的位置：data/<插件名>/<game>/versions.json，不进 git，不会和 #更新图鉴 的 git pull 冲突 */
+/**
+ * 存放同步结果的位置：resources/version/<game>.yaml。这个路径特意加进了 .gitignore，不受 git 管，
+ * #更新图鉴/#强制更新图鉴（git pull / reset --hard）不会碰它，也不会因为它本地有改动就更新失败。
+ */
 export function versionsFile (game) {
-  return path.join(dataRoot, game, 'versions.json')
+  return path.join(pluginRoot, 'resources', 'version', `${game}.yaml`)
+}
+
+/** 名称: 版本号 按版本号从小到大排序拼成一段 yaml；名字带引号/冒号/#这类字符的加个引号，避免解析出错 */
+function block (label, map) {
+  const vkey = v => String(v).split('.').map(Number)
+  const lines = Object.entries(map)
+    .sort(([, a], [, b]) => vkey(a)[0] - vkey(b)[0] || (vkey(a)[1] || 0) - (vkey(b)[1] || 0))
+    .map(([name, ver]) => `  ${/^[「[{]/.test(name) || /[:#]/.test(name) ? JSON.stringify(name) : name}: '${ver}'`)
+  return `${label}:\n${lines.join('\n')}`
+}
+
+/** data（{ 分类: {名称: 版本号} }）拼成带说明注释的完整 yaml 文本 */
+function render (data) {
+  const header = [
+    '# 条目上线版本：分类列表按版本分组、排序用',
+    '# 整理自 genshin-db（https://github.com/theBowja/genshin-db ，MIT License，Copyright (c) 2020 theBowja）',
+    '# 这个文件是插件运行时自动生成/同步的（#图鉴更新 / #更新图鉴目录，或者每天自动同步），不要手改，改了也会被覆盖；',
+    '# 自己要补充或修正的写到 config/version/gs.yaml，格式一样，不会被这个文件覆盖'
+  ].join('\n')
+  const blocks = Object.entries(data).map(([label, map]) => block(label, map))
+  return `${header}\n\n${blocks.join('\n')}\n`
 }
 
 /**
- * 联网检查 genshin-db 有没有更新，有变化才重写本地缓存；
+ * 联网检查 genshin-db 有没有更新，有变化才重写本地文件；
  * 拉取失败（离线、被墙）只记日志，不影响插件正常查询——查询时照样能用上一次同步到的数据；一次都没同步成功过的话，
  * 分类列表里的版本分组会先显示成「未收录版本」，不影响条目本身的查询。
  * 返回 { changed, added: { 分类: 新增条数 }, totalAdded }：added 只统计新出现的名称，已有名称改了版本号不算在内。
@@ -58,9 +82,7 @@ export async function syncVersions (game) {
   for (const [dir, label] of Object.entries(SOURCES)) data[label] = await loadCategory(dir)
 
   const file = versionsFile(game)
-  const prevRaw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
-  let prev = {}
-  try { prev = prevRaw ? JSON.parse(prevRaw) : {} } catch { prev = {} }
+  const prev = readYaml(file)
 
   const added = {}
   let totalAdded = 0
@@ -73,7 +95,8 @@ export async function syncVersions (game) {
     }
   }
 
-  const next = JSON.stringify(data)
+  const next = render(data)
+  const prevRaw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
   if (next === prevRaw) return { changed: false, added: {}, totalAdded: 0 }
 
   ensureDir(path.dirname(file))
