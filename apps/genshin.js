@@ -91,9 +91,9 @@ const HELP = [
   '#武器图鉴：分类总览；#五星武器图鉴 / #金色武器图鉴：该品质按版本分组列出',
   '#背包图鉴：按游戏背包页签查看；#养成道具图鉴、#紫色贵重道具图鉴 等',
   '#图鉴分类：看看有哪些分类',
-  '#图鉴更新：重新拉取目录（主人）',
-  '#图鉴强制更新：清空全部数据缓存（主人）',
-  '#更新图鉴目录：立即从 genshin-db 同步版本表，合并转发显示各分类新增条数（主人）',
+  '#图鉴更新：重新拉取目录，顺带同步一次版本表（主人）',
+  '#图鉴强制更新：清空全部数据缓存后同上（主人）',
+  '#更新图鉴目录：只同步版本表，不刷新目录（主人）',
   '#图鉴清除缓存：清空全部条目详情缓存（主人）',
   '#图鉴清除缓存护摩之杖：只清这一条的详情缓存（主人）',
   '#图鉴调试护摩之杖：导出原始数据（主人）'
@@ -365,15 +365,23 @@ export class ObcGenshin extends plugin {
     return sendMany(this.e, imgs.map(buf => segment.image(buf)), label)
   }
 
+  /** 重新拉取目录，顺带同步一次版本表（genshin-db）；两边各自失败不互相影响 */
   async update () {
     const force = this.e.msg.includes('强制')
     if (force) source.clearDetails()
+    const lines = []
     try {
       const index = await source.getIndex(true)
-      return this.reply(`目录已更新，共 ${index.length} 条${force ? '；详情缓存已清空' : ''}`)
+      lines.push(`目录已更新，共 ${index.length} 条${force ? '；详情缓存已清空' : ''}`)
     } catch (err) {
-      return this.reply(`更新失败：${err.message}`)
+      lines.push(`目录更新失败：${err.message}`)
     }
+    try {
+      lines.push(...formatSyncResult(await syncVersions(GAME)))
+    } catch (err) {
+      lines.push(`版本表同步失败：${err.message}`)
+    }
+    return sendMany(this.e, lines, '图鉴更新')
   }
 
   /** 立即从 genshin-db 同步一次版本表，方便刚出新武器/圣遗物时马上更新，不用等到当天自动同步的时间 */
