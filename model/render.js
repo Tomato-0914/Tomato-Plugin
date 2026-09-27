@@ -120,13 +120,17 @@ export function artifactPieceArt (setName, slot, dir) {
   return ''
 }
 
-/** 角色立绘：优先用喵喵插件的本地图（抽卡展示图，整张都不透明），没有再用观测枢自己的图兜底；两者都不是透明抠图，统一装在带边框的卡片里显示 */
+/**
+ * 角色立绘：优先用喵喵插件的本地图（抽卡展示图），没有再用观测枢自己的图兜底；两者都不是透明抠图。
+ * 喵喵的本地图统一是竖长的半身/全身立绘，裁剪铺满展示框效果最好；观测枢兜底的图构图不固定（有的是
+ * 大幅场景插画），裁剪容易把主体切没，所以标记 local 让模板按来源分别处理（本地裁剪铺满，兜底完整显示）
+ */
 export function characterArt (name, image, dir) {
   if (dir && name) {
     const file = path.resolve(process.cwd(), dir, name, 'imgs', 'gacha.webp')
-    if (fs.existsSync(file)) return pathToFileURL(file).href
+    if (fs.existsSync(file)) return { image: pathToFileURL(file).href, local: true }
   }
-  return image || ''
+  return { image: image || '', local: false }
 }
 
 /** 命之座图标：优先用喵喵插件本地图（cons-1.webp ~ cons-6.webp），没有再用观测枢的图标兜底 */
@@ -244,7 +248,7 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
     view = {
       ...character,
       element: character.element || (entry.tags || []).find(t => t.k === '元素')?.v || '',
-      image: characterArt(character.name, character.image, cc.artDir),
+      ...characterArt(character.name, character.image, cc.artDir),
       materials: character.materials.map(m => ({ ...m, img: matIcon(m.name) || m.img })),
       constellations: character.constellations.map(c => ({ ...c, icon: characterConsArt(character.name, c.level, cc.artDir) || c.icon })),
       stars: Array.from({ length: Math.min(character.star || 0, 5) }, (_, i) => i),
