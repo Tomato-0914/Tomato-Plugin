@@ -33,11 +33,9 @@
   .main { position: relative; display: grid; grid-template-columns: 420px 1fr; gap: 32px; align-items: start; margin-top: 6px; }
   .left, .right { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
-  /* 左侧：圆形法阵 + 角色立绘（配色随元素自动调整） */
-  .art { position: relative; flex: none; height: 400px; }
-  .art svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .art-img { position: absolute; left: 50%; top: 50%; width: 58%; height: 58%; transform: translate(-50%, -50%); object-fit: contain; filter: drop-shadow(0 10px 16px rgba(40, 30, 20, .3)); }
-  .art-img.local { width: 72%; height: 88%; }
+  /* 左侧：角色立绘（喵喵插件的 gacha/观测枢的图都是不透明的整张图，不是透明立绘，所以用边框卡片装起来，而不是浮在圆形法阵上） */
+  .art { position: relative; flex: none; height: 400px; border-radius: 14px; overflow: hidden; border: 2px solid var(--line-deep); background: linear-gradient(160deg, #F4EEE3, #EADFCB); box-shadow: inset 0 0 0 4px #FBF8F2; }
+  .art-img { display: block; width: 100%; height: 100%; object-fit: contain; }
 
   .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
   .block { padding: 16px 26px 18px; }
@@ -81,7 +79,6 @@
   .skill-tag { font-size: 13px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 8px; opacity: .85; }
   .skill-desc { margin-top: 6px; font-size: 15px; line-height: 1.8; color: var(--ink-soft); }
   .const-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; }
-  @media (max-width: 0) {}
 
   .foot { position: relative; flex: none; margin-top: 20px; display: flex; justify-content: space-between; font-size: 12px; color: #A89E8E; }
 </style>
@@ -97,8 +94,6 @@
         <stop offset="0" stop-color="#FFE266"/>
         <stop offset="1" stop-color="#F4A60C"/>
       </linearGradient>
-      <path id="spark" d="M0 -30 C3 -8 8 -3 30 0 C8 3 3 8 0 30 C-3 8 -8 3 -30 0 C-8 -3 -3 -8 0 -30Z"/>
-      <path id="gem" d="M0 -16 L9 0 L0 16 L-9 0Z"/>
     </defs>
   </svg>
 
@@ -124,26 +119,7 @@
   <div class="main">
     <section class="left">
       <div class="art">
-        <svg class="deco" viewBox="0 0 500 420">
-          <g fill="#E7DDCD">
-            <use href="#spark" transform="translate(70 70) scale(1.1)"/>
-            <use href="#spark" transform="translate(438 88) scale(1.2)"/>
-            <use href="#spark" transform="translate(60 350) scale(1)"/>
-            <use href="#spark" transform="translate(440 352) scale(.9)"/>
-            <use href="#spark" transform="translate(120 30) scale(.5)"/>
-            <use href="#spark" transform="translate(395 395) scale(.5)"/>
-          </g>
-          <circle cx="250" cy="210" r="190" fill="none" stroke="var(--accent)" stroke-opacity=".35" stroke-width="2"/>
-          <circle cx="250" cy="210" r="176" fill="var(--accent)" fill-opacity=".08"/>
-          <circle cx="250" cy="210" r="164" fill="none" stroke="#FAF6EF" stroke-width="2"/>
-          <g fill="#F6F1E8" stroke="var(--accent)" stroke-opacity=".45" stroke-width="1.5">
-            <use href="#gem" transform="translate(250 20)"/>
-            <use href="#gem" transform="translate(250 400)"/>
-            <use href="#gem" transform="translate(60 210) rotate(90)"/>
-            <use href="#gem" transform="translate(440 210) rotate(90)"/>
-          </g>
-        </svg>
-        {{if image}}<img class="art-img{{if local}} local{{/if}}" src="{{image}}" referrerpolicy="no-referrer">{{/if}}
+        {{if image}}<img class="art-img" src="{{image}}" referrerpolicy="no-referrer">{{/if}}
       </div>
 
       {{if cv}}
