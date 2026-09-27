@@ -275,7 +275,7 @@ export class ObcGenshin extends plugin {
       name: '观测枢图鉴·原神',
       dsc: '实时拉取米游社观测枢数据渲染图鉴',
       event: 'message',
-      priority: cfg.priority ?? 100,
+      priority: cfg.priority ?? -100,
       rule
     })
   }
