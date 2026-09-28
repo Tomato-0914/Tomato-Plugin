@@ -23,7 +23,7 @@ const schemas = [
 
   { component: 'Divider', label: '图片' },
   { field: 'imageCache', label: '图片缓存', component: 'Switch', bottomHelpMessage: '开启后渲染好的图存到 data/Tomato-Plugin/gs/Atlas/<分类>/<图鉴名>/（如 Atlas/角色/兹白/），再查直接发本地图，更快；数据不对时发 #图鉴清除图片缓存<名称> 重新生成。关闭不会删除已有缓存' },
-  { field: 'imageCacheCron', label: '定时清理图片缓存', component: 'Input', bottomHelpMessage: 'cron 表达式（秒 分 时 日 月 周），默认 0 0 4 * * 3 = 每周三凌晨 4 点；留空不定时清理；保存后立即生效', componentProps: { placeholder: '0 0 4 * * 3' } },
+  { field: 'imageCacheCron', label: '定时清理图片缓存', component: 'EasyCron', bottomHelpMessage: '用选择器选时间，默认每周三凌晨 4 点；选择器生成的 7 位表达式插件会自动转换；留空不定时清理；保存后立即生效', componentProps: { placeholder: '0 0 4 ? * 4 *' } },
   { field: 'render.quality', label: '图片质量', component: 'InputNumber', bottomHelpMessage: 'JPEG 质量 1~100', componentProps: { min: 1, max: 100, placeholder: '90' } },
   { field: 'weapon.artDir', label: '武器立绘目录', component: 'Input', bottomHelpMessage: '喵喵插件的武器立绘目录（相对 Yunzai 根目录），找不到时用观测枢图标' },
 

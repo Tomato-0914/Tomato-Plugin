@@ -3,6 +3,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { getConfig, dataRoot, pluginRoot, pluginName } from './config.js'
 import { itemTab } from './match.js'
+import { normalizeCron, yearMatches } from './cron.js'
 
 /**
  * 图片缓存：渲染好的图存在 data/<插件名>/<game>/Atlas/<分类>/<图鉴名>/1.jpg、2.jpg…，旁边一个 meta.json。
@@ -136,13 +137,15 @@ export function saveImages (game, entry, dish, label, bufs) {
 let clearJob = null
 /**
  * 按配置 imageCacheCron 定时清空图片缓存；留空不定时清理。启动时和锅巴保存配置后各调用一次，重复调用会先取消旧的定时任务。
- * 用 Yunzai 自带的 node-schedule，支持「秒 分 时 日 月 周」6 段和「分 时 日 月 周」5 段两种写法
+ * 用 Yunzai 自带的 node-schedule；锅巴 Cron 选择器生成的 7 段 Quartz 表达式先转换（见 cron.js），
+ * 手写的 Linux 风格 5 段（分 时 日 月 周）/ 6 段（秒 分 时 日 月 周）也照样能用
  */
 export async function scheduleImageClear (game) {
   clearJob?.cancel()
   clearJob = null
-  const cron = String(getConfig().imageCacheCron ?? '').trim()
-  if (!cron) return
+  const raw = String(getConfig().imageCacheCron ?? '').trim()
+  const parsed = normalizeCron(raw)
+  if (!parsed) return
   let schedule
   try {
     schedule = (await import('node-schedule')).default
@@ -150,11 +153,12 @@ export async function scheduleImageClear (game) {
     logger.warn(`[${pluginName}] 找不到 node-schedule，图片缓存定时清理不生效：${err.message}`)
     return
   }
-  clearJob = schedule.scheduleJob(cron, () => {
+  clearJob = schedule.scheduleJob(parsed.cron, () => {
+    if (!yearMatches(parsed.year, new Date().getFullYear())) return
     const n = clearImages(game)
     logger.mark(`[${pluginName}] 定时清理图片缓存：清掉 ${n} 条，下次查询时重新生成`)
   })
-  if (!clearJob) logger.warn(`[${pluginName}] 图片缓存定时清理的 cron 表达式无效：${cron}`)
+  if (!clearJob) logger.warn(`[${pluginName}] 图片缓存定时清理的 cron 表达式无效：${raw}（转换后 ${parsed.cron}）`)
 }
 
 /** 删掉不在目录里的条目的图片（excludeCategories 新屏蔽的分类、观测枢下架的条目）；返回删掉的文件夹数 */
