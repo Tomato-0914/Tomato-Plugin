@@ -3,7 +3,7 @@ import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from '../model/config.js'
 import { ObcSource } from '../model/obc.js'
 import { matchEntry, listCategory, listItemType, itemTab, BAG_TABS, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
-import { renderEntry, renderHelp } from '../model/render.js'
+import { renderEntry, renderHelp, artifactPieceArt } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 import { syncVersions, scheduleVersionSync, formatSyncResult } from '../model/versionSync.js'
 import { loadImages, saveImages, clearImages, scheduleImageClear } from '../model/imageCache.js'
@@ -515,6 +515,21 @@ export class ObcGenshin extends plugin {
     }
     const topClasses = [...classCount].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([c, n]) => `${c}(${n})`)
 
+    // 圣遗物：列出每个部件的部位名/部件名，以及有没有对上喵喵插件的透明图，方便排查图标退回观测枢的情况
+    const pieceLines = []
+    if (res.entry.path.includes('圣遗物')) {
+      const plain = s => String(s ?? '').replace(/<[^>]+>/g, '').trim()
+      const pieces = (Array.isArray(content.widgets) ? content.widgets : []).filter(w => w.id === 'artifact_list_v2')
+      const dir = getConfig().artifact?.artDir
+      pieces.forEach((w, i) => {
+        const slot = plain(w.module)
+        const name = plain([].concat(w.data?.name?.value ?? w.data?.name ?? '').join(''))
+        const art = artifactPieceArt(res.entry.title, slot, dir, name, pieces.length === 5 ? i : -1)
+        pieceLines.push(`- 部位「${slot}」部件「${name}」→ ${art ? decodeURIComponent(art.replace(/^.*[\\/]imgs[\\/]/, '')) : '没对上喵喵的图，用观测枢图标'}`)
+      })
+      if (!pieces.length) pieceLines.push('- 没有找到部件数据（artifact_list_v2）')
+    }
+
     const lines = [
       `「${content.title}」content_id=${res.entry.id}`,
       `分类：${res.entry.path.join(' / ')}`,
@@ -523,13 +538,15 @@ export class ObcGenshin extends plugin {
         ? `分段 ${secs.length} 个：\n${secs.map(s => `- ${s?.name || '（无名）'}：${(s?.text || '').length} 字符`).join('\n')}`
         : `没有 contents 分段，content 长度 ${String(content.content || '').length}`,
       `常见 class：${topClasses.join(' ') || '无'}`,
+      ...(pieceLines.length ? [`圣遗物部件（喵喵透明图目录：${getConfig().artifact?.artDir || '未配置'}）：`, ...pieceLines] : []),
       `解析结果：${path.relative(process.cwd(), file)}`,
       ...raws.map(r => r.file ? `${r.label}原始数据：${path.relative(process.cwd(), r.file)}` : `${r.label}没有数据：${r.error}`)
     ]
     await sendMany(this.e, chunkText(lines.join('\n')), '图鉴调试')
-    const files = raws.filter(r => r.file).map(r => r.file)
+    // 解析结果和新旧接口原始数据一起发
+    const files = [file, ...raws.filter(r => r.file).map(r => r.file)]
     let sent = true
-    for (const f of files.length ? files : [file]) sent = await sendFile(this.e, f) && sent
+    for (const f of files) sent = await sendFile(this.e, f) && sent
     if (!sent) await this.reply('当前适配器不支持发送文件，请到上面的路径手动下载')
     return true
   }
