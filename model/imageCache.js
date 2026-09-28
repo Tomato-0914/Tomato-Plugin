@@ -157,6 +157,22 @@ export async function scheduleImageClear (game) {
   if (!clearJob) logger.warn(`[${pluginName}] 图片缓存定时清理的 cron 表达式无效：${cron}`)
 }
 
+/** 删掉不在目录里的条目的图片（excludeCategories 新屏蔽的分类、观测枢下架的条目）；返回删掉的文件夹数 */
+export function pruneImages (game, keepIds) {
+  cleanLegacy(game)
+  let n = 0
+  for (const c of subDirs(cacheRoot(game))) {
+    for (const d of subDirs(c)) {
+      const id = readMeta(d)?.id
+      if (id === undefined || keepIds.has(String(id))) continue
+      fs.rmSync(d, { recursive: true, force: true })
+      n++
+    }
+    if (!subDirs(c).length) fs.rmSync(c, { recursive: true, force: true })
+  }
+  return n
+}
+
 /** 清图片缓存：传 id 只清这个条目（食物连同它名下的特色料理），否则全部清空；返回清掉的文件夹数 */
 export function clearImages (game, id) {
   cleanLegacy(game)

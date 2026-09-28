@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from './config.js'
 import { modulesToContents } from './wiki.js'
+import { pruneImages } from './imageCache.js'
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
@@ -37,8 +38,14 @@ export function parseTags (ext) {
   return out
 }
 
-/** 把目录树摊平成 [{ id, title, path, icon, tags }] */
-export function buildIndex (roots) {
+/** 条目所属的顶层分类（目录路径里「图鉴」下面那一级） */
+const topCategory = trail => trail.filter(p => p !== '图鉴')[0]
+
+/** 配置里屏蔽的分类（excludeCategories） */
+const excludedSet = () => new Set((getConfig().excludeCategories || []).map(String))
+
+/** 把目录树摊平成 [{ id, title, path, icon, tags }]；exclude 里的分类整棵子树直接跳过，不进目录 */
+export function buildIndex (roots, exclude = new Set()) {
   const out = []
   const seen = new Set()
   const walk = (nodes, trail) => {
@@ -46,6 +53,7 @@ export function buildIndex (roots) {
     for (const node of nodes) {
       if (!node || typeof node !== 'object') continue
       const here = node.name ? [...trail, String(node.name)] : trail
+      if (exclude.has(topCategory(here))) continue
       for (const item of Array.isArray(node.list) ? node.list : []) {
         const id = item?.content_id
         const title = typeof item?.title === 'string' ? item.title.trim() : ''
@@ -124,24 +132,40 @@ export class ObcSource {
   }
 
   /**
-   * 目录（已去掉 excludeCategories 里的分类）：这些分类不查询、不拉详情、不出图，#图鉴分类 里也不显示。
-   * 过滤只在内存里做，磁盘上的目录缓存是完整的，所以从配置里删掉某个分类后立刻就能查，不用重新拉目录
+   * 目录，完全不含 excludeCategories 里的分类：拉目录时整棵子树跳过，不写进目录缓存，也不拉详情、不出图，
+   * #图鉴分类 里也不显示；新屏蔽某个分类时，它已有的详情缓存和图片缓存一并删掉。
+   * 运行中（比如锅巴里）新加的屏蔽分类在内存里先过滤掉，立即生效；从列表里删掉的分类要发 #图鉴更新 重新拉目录才回来
    */
   async getIndex (force = false) {
     return this.withoutExcluded(await this.getRawIndex(force))
   }
 
   withoutExcluded (entries) {
-    const ex = (getConfig().excludeCategories || []).map(String)
-    const key = ex.join('|')
+    const set = excludedSet()
+    const key = [...set].join('|')
     if (this.filtered?.src === entries && this.filtered.key === key) return this.filtered.out
-    const set = new Set(ex)
-    const out = set.size ? entries.filter(e => !set.has((e.path || []).filter(p => p !== '图鉴')[0])) : entries
+    const out = set.size ? entries.filter(e => !set.has(topCategory(e.path || []))) : entries
     this.filtered = { src: entries, key, out }
     return out
   }
 
-  /** 完整目录：内存 → 磁盘缓存 → 接口；接口挂了就用旧缓存顶上；没有缓存时失败后 5 分钟内不再请求 */
+  /** 删掉目录里已经没有的条目的详情缓存和图片缓存（被屏蔽的分类、观测枢下架的条目） */
+  prune (entries) {
+    const keep = new Set(entries.map(e => String(e.id)))
+    let n = 0
+    const dir = path.join(this.dir, 'detail')
+    try {
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.json') || keep.has(f.slice(0, -5))) continue
+        fs.rmSync(path.join(dir, f), { force: true })
+        n++
+      }
+    } catch {}
+    n += pruneImages(this.key, keep)
+    if (n) logger.mark(`[${pluginName}] 已删除 ${n} 份不在目录里的详情/图片缓存（屏蔽的分类或已下架的条目）`)
+  }
+
+  /** 目录：内存 → 磁盘缓存 → 接口；接口挂了就用旧缓存顶上；没有缓存时失败后 5 分钟内不再请求 */
   async getRawIndex (force = false) {
     const ttl = getConfig().api?.indexTTL ?? 21600
     if (!force && this.index && Date.now() - this.indexAt < ttl * 1000) return this.index
@@ -155,13 +179,23 @@ export class ObcSource {
   async loadIndex (force, ttl) {
     const file = path.join(this.dir, 'index.json')
     const cache = this.readCache(file, ttl)
+    if (cache?.data?.length) {
+      // 旧的目录缓存里如果还有被屏蔽的分类（老版本存的，或者刚在配置里加了屏蔽），去掉后写回，并清掉它们的缓存
+      const kept = this.withoutExcluded(cache.data)
+      if (kept.length !== cache.data.length) {
+        this.writeCache(file, kept)
+        this.prune(kept)
+        cache.data = kept
+      }
+    }
     if (!force && cache?.fresh && cache.data?.length) return this.setIndex(cache.data)
     try {
       const { base, appSn, channelId, name } = this.game
       const data = await this.request(`${base}/home/content/list?app_sn=${appSn}&channel_id=${channelId}`)
-      const entries = buildIndex(data?.list)
+      const entries = buildIndex(data?.list, excludedSet())
       if (!entries.length) throw new Error('目录为空，接口结构可能变了')
       this.writeCache(file, entries)
+      this.prune(entries)
       logger.mark(`[${pluginName}] ${name}目录已更新，共 ${entries.length} 条`)
       this.indexFail = null
       this.setIndex(entries)
