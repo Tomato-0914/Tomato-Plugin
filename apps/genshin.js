@@ -6,6 +6,7 @@ import { matchEntry, listCategory, listItemType, itemTab, BAG_TABS, getAliases, 
 import { renderEntry, renderHelp } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 import { syncVersions, scheduleVersionSync, formatSyncResult } from '../model/versionSync.js'
+import { loadImages, saveImages, clearImages } from '../model/imageCache.js'
 
 const GAME = 'gs'
 const source = new ObcSource(GAME)
@@ -95,8 +96,9 @@ const HELP_FALLBACK = [
   '#图鉴更新：重新拉取目录，顺带同步一次版本表（主人）',
   '#图鉴强制更新：清空全部数据缓存后同上（主人）',
   '#更新图鉴目录：只同步版本表，不刷新目录（主人）',
-  '#图鉴清除缓存：清空全部条目详情缓存（主人）',
-  '#图鉴清除缓存护摩之杖：只清这一条的详情缓存（主人）',
+  '#图鉴清除缓存：清空全部详情缓存和图片缓存（主人）',
+  '#图鉴清除缓存护摩之杖：只清这一条的详情和图片缓存（主人）',
+  '#图鉴清除图片缓存[名称]：只清图片缓存，下次重新出图（主人）',
   '#图鉴调试护摩之杖：导出原始数据（主人）'
 ].join('\n')
 
@@ -270,7 +272,7 @@ export class ObcGenshin extends plugin {
       { reg: '^#(原神)?图鉴(强制)?更新$', fnc: 'update', permission: 'master' },
       { reg: '^#?(原神)?更新图鉴目录$', fnc: 'updateVersions', permission: 'master' },
       { reg: '^#(原神)?图鉴调试\\s*\\S.*$', fnc: 'debug', permission: 'master' },
-      { reg: '^#(原神)?图鉴清除缓存.*$', fnc: 'clearCache', permission: 'master' },
+      { reg: '^#(原神)?图鉴清除(图片)?缓存.*$', fnc: 'clearCache', permission: 'master' },
       { reg: '^#(原神)?图鉴(分类|目录)$', fnc: 'categories' },
       { reg: '^[#/](原神)?图鉴\\s*\\S.*$', fnc: 'queryPrefix' },
       { reg: '^[#/]?.+图鉴$', fnc: 'querySuffix' }
@@ -296,6 +298,7 @@ export class ObcGenshin extends plugin {
         priority: cfg.priority ?? -100,
         bareMatch: cfg.bareMatch ? '开' : '关',
         renderScale: `${cfg.renderScale ?? 100}%`,
+        imageCache: cfg.imageCache !== false ? '开' : '关',
         skipCategories: (cfg.skipCategories || []).join('、')
       })
       return sendMany(this.e, imgs.map(buf => segment.image(buf)), '图鉴帮助')
@@ -365,6 +368,13 @@ export class ObcGenshin extends plugin {
   async sendEntry (entry, force = false, dish = '') {
     if (skipped(entry)) return false
     const label = (dish || entry.title).replace(/^「(.+)」$/, '$1')
+    // 角色卡是分页的几张图，一律合并转发，免得一次连发几张刷屏
+    const send = imgs => sendMany(this.e, imgs.map(buf => segment.image(buf)), label, imgs.length > 1 && entry.path.includes('角色'))
+
+    // 有图片缓存直接发本地图，不拉详情也不渲染
+    const cached = force ? null : loadImages(GAME, entry, dish, label)
+    if (cached) return send(cached)
+
     let content
     try {
       content = await source.getDetail(entry.id, force)
@@ -385,18 +395,21 @@ export class ObcGenshin extends plugin {
       logger.error(err)
       return this.reply(`「${label}」渲染失败：${err.message}`)
     }
-    // 角色卡是分页的几张图，一律合并转发，免得一次连发几张刷屏
-    return sendMany(this.e, imgs.map(buf => segment.image(buf)), label, imgs.length > 1 && entry.path.includes('角色'))
+    saveImages(GAME, entry, dish, label, imgs)
+    return send(imgs)
   }
 
   /** 重新拉取目录，顺带同步一次版本表（genshin-db）；两边各自失败不互相影响 */
   async update () {
     const force = this.e.msg.includes('强制')
-    if (force) source.clearDetails()
+    if (force) {
+      source.clearDetails()
+      clearImages(GAME)
+    }
     const lines = []
     try {
       const index = await source.getIndex(true)
-      lines.push(`目录已更新，共 ${index.length} 条${force ? '；详情缓存已清空' : ''}`)
+      lines.push(`目录已更新，共 ${index.length} 条${force ? '；详情缓存和图片缓存已清空' : ''}`)
     } catch (err) {
       lines.push(`目录更新失败：${err.message}`)
     }
@@ -419,12 +432,18 @@ export class ObcGenshin extends plugin {
     return sendMany(this.e, formatSyncResult(result), '版本表更新', true)
   }
 
-  /** 不带名称清空全部详情缓存；带名称只清这一条；都只清缓存，不生成图，下次查询时重新拉取 */
+  /**
+   * #图鉴清除缓存[名称]：详情缓存和图片缓存一起清，下次查询时重新拉取并重新出图；
+   * #图鉴清除图片缓存[名称]：只清图片，下次查询用已缓存的详情重新出图。不带名称清全部，带名称只清这一条
+   */
   async clearCache () {
-    const q = this.e.msg.replace(/^#(原神)?图鉴清除缓存\s*/, '').trim()
+    const imageOnly = /清除图片缓存/.test(this.e.msg)
+    const q = this.e.msg.replace(/^#(原神)?图鉴清除(图片)?缓存\s*/, '').trim()
+    const what = imageOnly ? '图片缓存' : '详情缓存和图片缓存'
     if (!q) {
-      source.clearDetails()
-      return this.reply('已清空全部详情缓存，下次查询时重新拉取')
+      if (!imageOnly) source.clearDetails()
+      clearImages(GAME)
+      return this.reply(`已清空全部${what}，下次查询时重新${imageOnly ? '生成' : '拉取'}`)
     }
     let index
     try {
@@ -434,8 +453,9 @@ export class ObcGenshin extends plugin {
     }
     const res = lookup(q, index)
     if (res.type !== 'hit') return this.reply(`没找到唯一条目「${q}」`)
-    source.clearDetails(res.entry.id)
-    return this.reply(`已清空「${res.entry.title}」的详情缓存，下次查询时重新拉取`)
+    if (!imageOnly) source.clearDetails(res.entry.id)
+    clearImages(GAME, res.entry.id)
+    return this.reply(`已清空「${res.entry.title}」的${what}，下次查询时重新${imageOnly ? '生成' : '拉取'}`)
   }
 
   async categories () {
