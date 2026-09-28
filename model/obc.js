@@ -78,6 +78,7 @@ export class ObcSource {
     this.onRefresh = null
     this.dishes = null
     this.dishJob = null
+    this.filtered = null
   }
 
   get game () {
@@ -122,8 +123,26 @@ export class ObcSource {
     fs.writeFileSync(file, JSON.stringify(data))
   }
 
-  /** 目录：内存 → 磁盘缓存 → 接口；接口挂了就用旧缓存顶上；没有缓存时失败后 5 分钟内不再请求 */
+  /**
+   * 目录（已去掉 excludeCategories 里的分类）：这些分类不查询、不拉详情、不出图，#图鉴分类 里也不显示。
+   * 过滤只在内存里做，磁盘上的目录缓存是完整的，所以从配置里删掉某个分类后立刻就能查，不用重新拉目录
+   */
   async getIndex (force = false) {
+    return this.withoutExcluded(await this.getRawIndex(force))
+  }
+
+  withoutExcluded (entries) {
+    const ex = (getConfig().excludeCategories || []).map(String)
+    const key = ex.join('|')
+    if (this.filtered?.src === entries && this.filtered.key === key) return this.filtered.out
+    const set = new Set(ex)
+    const out = set.size ? entries.filter(e => !set.has((e.path || []).filter(p => p !== '图鉴')[0])) : entries
+    this.filtered = { src: entries, key, out }
+    return out
+  }
+
+  /** 完整目录：内存 → 磁盘缓存 → 接口；接口挂了就用旧缓存顶上；没有缓存时失败后 5 分钟内不再请求 */
+  async getRawIndex (force = false) {
     const ttl = getConfig().api?.indexTTL ?? 21600
     if (!force && this.index && Date.now() - this.indexAt < ttl * 1000) return this.index
     if (!force && !this.index && this.indexFail && Date.now() - this.indexFail.at < 300000) throw this.indexFail.err

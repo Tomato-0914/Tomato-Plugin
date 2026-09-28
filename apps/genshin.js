@@ -6,7 +6,7 @@ import { matchEntry, listCategory, listItemType, itemTab, BAG_TABS, getAliases, 
 import { renderEntry, renderHelp } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 import { syncVersions, scheduleVersionSync, formatSyncResult } from '../model/versionSync.js'
-import { loadImages, saveImages, clearImages } from '../model/imageCache.js'
+import { loadImages, saveImages, clearImages, scheduleImageClear } from '../model/imageCache.js'
 
 const GAME = 'gs'
 const source = new ObcSource(GAME)
@@ -20,6 +20,9 @@ setTimeout(prefetchDishes, 15000)
 
 /** 每天后台自动从 genshin-db 同步一次武器/圣遗物/食物的上线版本；启动后也会先跑一次，日志打到控制台 */
 scheduleVersionSync(GAME)
+
+/** 按 imageCacheCron 定时清空图片缓存（锅巴保存配置后会重新排一次） */
+scheduleImageClear(GAME)
 
 /** 目录派生的查找表（id → 条目、规范化标题 → 条目），按目录对象缓存，避免每条消息都遍历全部标题 */
 const indexCache = new WeakMap()

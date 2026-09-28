@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import YAML from 'yaml'
 import { getConfig, pluginRoot, readYaml } from './model/config.js'
+import { scheduleImageClear } from './model/imageCache.js'
 
 const USER_FILE = path.join(pluginRoot, 'config', 'config.yaml')
 
@@ -16,11 +17,13 @@ const schemas = [
 
   { component: 'Divider', label: '查询范围' },
   { field: 'skipCategories', label: '不响应的分类', component: 'GTags', bottomHelpMessage: '这些分类交给其他插件处理，默认为空；比如想让角色图鉴继续交给喵喵插件可以加上「角色」', componentProps: { allowAdd: true, allowDel: true } },
+  { field: 'excludeCategories', label: '不收录的分类', component: 'GTags', bottomHelpMessage: '这些分类整个不收录：不查询、不拉详情、不出图，#图鉴分类 里也不显示；默认是成就、任务、地图文本、教程、洞天、NPC&商店、活动、深境螺旋、幻想真境剧诗、幽境危战', componentProps: { allowAdd: true, allowDel: true } },
   { field: 'bareCategories', label: '可直接查询的分类', component: 'GTags', bottomHelpMessage: '直接发名称只对这些分类生效，其余分类要发 #名称图鉴', componentProps: { allowAdd: true, allowDel: true } },
   { field: 'strictTitles', label: '严格条目', component: 'GTags', bottomHelpMessage: '日常用词或与其他插件指令重名的条目，只认 #名称图鉴 / #图鉴名称', componentProps: { allowAdd: true, allowDel: true } },
 
   { component: 'Divider', label: '图片' },
   { field: 'imageCache', label: '图片缓存', component: 'Switch', bottomHelpMessage: '开启后渲染好的图存到 data/Tomato-Plugin/gs/Atlas/<分类>/<图鉴名>/（如 Atlas/角色/兹白/），再查直接发本地图，更快；数据不对时发 #图鉴清除图片缓存<名称> 重新生成。关闭不会删除已有缓存' },
+  { field: 'imageCacheCron', label: '定时清理图片缓存', component: 'Input', bottomHelpMessage: 'cron 表达式（秒 分 时 日 月 周），默认 0 0 4 * * 3 = 每周三凌晨 4 点；留空不定时清理；保存后立即生效', componentProps: { placeholder: '0 0 4 * * 3' } },
   { field: 'render.quality', label: '图片质量', component: 'InputNumber', bottomHelpMessage: 'JPEG 质量 1~100', componentProps: { min: 1, max: 100, placeholder: '90' } },
   { field: 'weapon.artDir', label: '武器立绘目录', component: 'Input', bottomHelpMessage: '喵喵插件的武器立绘目录（相对 Yunzai 根目录），找不到时用观测枢图标' },
 
@@ -74,6 +77,7 @@ export function supportGuoba () {
         }
         fs.mkdirSync(path.dirname(USER_FILE), { recursive: true })
         fs.writeFileSync(USER_FILE, YAML.stringify(user))
+        scheduleImageClear('gs')
         return Result.ok({}, '保存成功~')
       }
     }

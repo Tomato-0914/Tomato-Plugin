@@ -100,7 +100,7 @@
       <h2>角色图鉴 <span class="tag">NEW</span></h2>
       <p class="sub">手机友好的 3 张竖图，合并转发发出：①概览（立绘、资料、满级属性、突破/天赋材料合计、CV、特殊料理、名片）②天赋说明 + 倍率表 ③命之座 + 观测枢推荐装备（不含第三方持有率统计），配色跟着角色主题色走</p>
       <div class="row"><span class="cmd">#刻晴图鉴</span><span class="desc">角色立绘优先用观测枢自己的图（每个角色都有），没有再用喵喵插件本地立绘兜底</span></div>
-      <div class="row"><span class="cmd">#刻晴天赋</span><span class="desc">这类细分查询暂未支持，天赋/命座信息已经在角色卡里了</span></div>
+      <div class="row"><span class="cmd">#刻师傅图鉴</span><span class="desc">角色简称、常见错别字、官方称号都认（如 雷神、公子、往生堂堂主）；单独的天赋/命座查询不做，角色卡里已经带了，要细查用喵喵插件</span></div>
     </div>
 
     <div class="card">
@@ -122,7 +122,7 @@
       <div class="row"><span class="cmd">#图鉴更新</span><span class="desc">重新拉取目录，顺带同步一次版本表；<b class="cmd">#图鉴强制更新</b> 额外清空全部详情缓存和图片缓存</span></div>
       <div class="row"><span class="cmd">#更新图鉴目录</span><span class="desc">只同步版本表，不刷新目录</span></div>
       <div class="row"><span class="cmd">#图鉴清除缓存</span><span class="desc">清空全部详情缓存和图片缓存；<b class="cmd">#图鉴清除缓存护摩之杖</b> 只清这一条，下次查询时重新拉取、重新出图</span></div>
-      <div class="row"><span class="cmd">#图鉴清除图片缓存</span><span class="desc">只清图片缓存，不重新拉数据；后面带名称（如 <b class="cmd">#图鉴清除图片缓存兹白</b>）只清这一条。图片缓存存在 data/Tomato-Plugin/{{game}}/Atlas/，默认开启，锅巴里可以关</span></div>
+      <div class="row"><span class="cmd">#图鉴清除图片缓存</span><span class="desc">只清图片缓存，不重新拉数据；后面带名称（如 <b class="cmd">#图鉴清除图片缓存兹白</b>）只清这一条。图片缓存存在 data/Tomato-Plugin/{{game}}/Atlas/，默认开启，默认每周三凌晨 4 点自动清一次，开关和清理时间都能在锅巴里改</span></div>
       <div class="row"><span class="cmd">#图鉴调试护摩之杖</span><span class="desc">导出该条目新旧接口原始数据和结构摘要，方便反馈接口结构变化</span></div>
       <div class="row"><span class="cmd">#更新图鉴</span><span class="desc">或 <b class="cmd">#强制更新图鉴</b>，从 git 远程更新插件本身并重启（需 git clone 安装），和上面刷新数据的命令是两回事</span></div>
     </div>

@@ -133,6 +133,30 @@ export function saveImages (game, entry, dish, label, bufs) {
   }
 }
 
+let clearJob = null
+/**
+ * 按配置 imageCacheCron 定时清空图片缓存；留空不定时清理。启动时和锅巴保存配置后各调用一次，重复调用会先取消旧的定时任务。
+ * 用 Yunzai 自带的 node-schedule，支持「秒 分 时 日 月 周」6 段和「分 时 日 月 周」5 段两种写法
+ */
+export async function scheduleImageClear (game) {
+  clearJob?.cancel()
+  clearJob = null
+  const cron = String(getConfig().imageCacheCron ?? '').trim()
+  if (!cron) return
+  let schedule
+  try {
+    schedule = (await import('node-schedule')).default
+  } catch (err) {
+    logger.warn(`[${pluginName}] 找不到 node-schedule，图片缓存定时清理不生效：${err.message}`)
+    return
+  }
+  clearJob = schedule.scheduleJob(cron, () => {
+    const n = clearImages(game)
+    logger.mark(`[${pluginName}] 定时清理图片缓存：清掉 ${n} 条，下次查询时重新生成`)
+  })
+  if (!clearJob) logger.warn(`[${pluginName}] 图片缓存定时清理的 cron 表达式无效：${cron}`)
+}
+
 /** 清图片缓存：传 id 只清这个条目（食物连同它名下的特色料理），否则全部清空；返回清掉的文件夹数 */
 export function clearImages (game, id) {
   cleanLegacy(game)
