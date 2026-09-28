@@ -385,7 +385,8 @@ export class ObcGenshin extends plugin {
       logger.error(err)
       return this.reply(`「${label}」渲染失败：${err.message}`)
     }
-    return sendMany(this.e, imgs.map(buf => segment.image(buf)), label)
+    // 角色卡是分页的几张图，一律合并转发，免得一次连发几张刷屏
+    return sendMany(this.e, imgs.map(buf => segment.image(buf)), label, imgs.length > 1 && entry.path.includes('角色'))
   }
 
   /** 重新拉取目录，顺带同步一次版本表（genshin-db）；两边各自失败不互相影响 */

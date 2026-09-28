@@ -64,6 +64,56 @@ function widgetsOf (content) {
   return Array.isArray(content?.widgets) ? content.widgets : []
 }
 
+/** 天赋倍率表只挑几个关键等级，全 15 列塞进图里太挤 */
+const TALENT_LEVELS = ['LV1', 'LV6', 'LV9', 'LV10', 'LV13']
+
+/** 天赋倍率表：{ cols: ['LV1', …], rows: [{ key, values }] }，去掉「升级材料」行；没有等级列的（被动天赋）返回 null */
+function talentTable (attr) {
+  const header = (Array.isArray(attr?.header) ? attr.header : []).map(h => strip(h).toUpperCase())
+  const idx = TALENT_LEVELS.map(l => header.indexOf(l)).filter(i => i > 0)
+  if (!idx.length) return null
+  const rows = (Array.isArray(attr.row) ? attr.row : [])
+    .map(r => [].concat(r))
+    .filter(r => strip(r[0]) && !strip(r[0]).includes('升级材料'))
+    .map(r => ({ key: strip(r[0]), values: idx.map(i => strip(r[i])) }))
+  return rows.length ? { cols: idx.map(i => header[i]), rows } : null
+}
+
+/** 天赋升级材料：「升级材料」行里各等级的词条卡片按名称累加，得到单个天赋 1→10 的总需求 */
+function talentMaterials (list) {
+  const total = new Map()
+  for (const t of list) {
+    const row = [].concat(t?.attr?.row || []).map(r => [].concat(r)).find(r => strip(r[0]).includes('升级材料'))
+    if (!row) continue
+    for (const cell of row.slice(1)) {
+      for (const [tag] of String(cell ?? '').matchAll(/<span\b[^>]*class="[^"]*custom-entry-wrapper[^"]*"[^>]*>/g)) {
+        const name = strip(tag.match(/data-entry-name="([^"]+)"/)?.[1])
+        if (!name) continue
+        const num = Number(tag.match(/data-entry-amount="([^"]*)"/)?.[1]) || 0
+        const img = tag.match(/data-entry-img="([^"]+)"/)?.[1] || ''
+        const cur = total.get(name) || { name, img, amount: 0 }
+        cur.amount += num
+        total.set(name, cur)
+      }
+    }
+    if (total.size) break
+  }
+  return [...total.values()].map(m => ({ name: m.name, img: m.img, num: formatNum(m.amount) }))
+}
+
+/** 特殊料理：一段 rich_text，第一段是图 + 「名称：xxx」，后面是效果/获得方式 */
+function specialDish (ws) {
+  const html = String(ws.find(w => w.module === '特殊料理')?.data?.rich_text || '')
+  const paras = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map(m => m[1])
+  const head = paras.find(p => /名称[：:]/.test(strip(p)))
+  if (!head) return null
+  const name = strip(head).replace(/^.*?名称[：:]\s*/, '')
+  if (!name) return null
+  const img = head.match(/data-image-url="([^"]+)"/)?.[1] || head.match(/<img[^>]*src="([^"]+)"/)?.[1] || ''
+  const lines = paras.filter(p => p !== head).map(strip).filter(Boolean)
+  return { name, img, lines }
+}
+
 /** 新接口：角色词条按 widgets（role_base_info / role_ascension / role_talent / multi_table / recommend）取结构化数据 */
 function extractNewCharacter (content) {
   const ws = widgetsOf(content)
@@ -81,11 +131,13 @@ function extractNewCharacter (content) {
   const topAttr = ascList[ascList.length - 1]?.attr || []
   const stats = topAttr.map(a => ({ key: strip(a.key), value: strip(flat(a.value)) })).filter(s => s.key && s.value)
 
-  const talents = (ws.find(w => w.id === 'role_talent')?.data?.list || []).map(t => ({
+  const talentList = ws.find(w => w.id === 'role_talent')?.data?.list || []
+  const talents = talentList.map(t => ({
     tag: tagOf(t.tab_name),
     name: strip(t.title),
     icon: t.icon || '',
-    desc: richify(t.desc)
+    desc: richify(t.desc),
+    table: talentTable(t.attr)
   })).filter(t => t.name)
 
   const constTable = (ws.find(w => w.id === 'multi_table' && w.module === '命之座')?.data?.tables || [])[0]
@@ -124,10 +176,13 @@ function extractNewCharacter (content) {
     summary,
     stats,
     materials,
+    talentMaterials: talentMaterials(talentList),
     talents,
     constellations,
     recommendWeapons: recommend('武器'),
-    recommendArtifacts: recommend('圣遗物')
+    recommendArtifacts: recommend('圣遗物'),
+    dish: specialDish(ws),
+    namecard: ws.find(w => w.id === 'business_card')?.data?.long_img || ''
   }
 }
 
@@ -193,7 +248,10 @@ function extractOldCharacter (content) {
     talents,
     constellations,
     recommendWeapons: [],
-    recommendArtifacts: []
+    recommendArtifacts: [],
+    talentMaterials: [],
+    dish: null,
+    namecard: ''
   }
 }
 

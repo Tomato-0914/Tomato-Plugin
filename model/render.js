@@ -31,7 +31,7 @@ function enqueue (fn) {
 const inflight = new Map()
 
 /** 固定出图尺寸（像素），模板按这个尺寸排版，不开放配置 */
-const SIZE = { weapon: [1280, 800], card: [1280, 800], entry: 760 }
+const SIZE = { weapon: [1280, 800], card: [1280, 800], entry: 760, character: 800 }
 
 const STAR_WORDS = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5 }
 const ELEMENTS = { 火: '#EF7938', 水: '#4CC2F1', 风: '#72E2C2', 雷: '#D376F0', 草: '#A5C83B', 冰: '#9FD6E3', 岩: '#F0B232' }
@@ -254,11 +254,17 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
       materials: character.materials.map(m => ({ ...m, img: matIcon(m.name) || m.img })),
       constellations: character.constellations.map(c => ({ ...c, icon: characterConsArt(character.name, c.level, cc.artDir) || c.icon })),
       stars: Array.from({ length: Math.min(character.star || 0, 5) }, (_, i) => i),
-      width: 1280,
+      width: SIZE.character,
       height: 0,
       time: '',
       entryId: entry.id
     }
+    // 一张长图在手机上缩下来字太小，拆成几张窄图：概览 / 天赋 / 命之座+推荐装备，没内容的页不出
+    view.pages = [
+      'overview',
+      view.talents.length && 'talents',
+      (view.constellations.length || view.recommendWeapons.length || view.recommendArtifacts.length) && 'cons'
+    ].filter(Boolean)
   } else if (card) {
     tplFile = CTPL
     view = {
@@ -295,7 +301,16 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
 
   const job = (async () => {
     onStart?.()
-    const bufs = await enqueue(() => doRender(gameKey, entry, view, r, tplFile))
+    const bufs = []
+    if (view.pages) {
+      // 分页逐张排队渲染，不一次占住渲染器太久
+      for (const [i, page] of view.pages.entries()) {
+        const pv = { ...view, page, pageNo: i + 1, pageCount: view.pages.length }
+        bufs.push(...await enqueue(() => doRender(gameKey, { ...entry, id: `${entry.id}_${page}`, title: `${entry.title}·${i + 1}` }, pv, r, tplFile)))
+      }
+    } else {
+      bufs.push(...await enqueue(() => doRender(gameKey, entry, view, r, tplFile)))
+    }
     if (!bufs.length) throw new Error('渲染器没有返回图片，看一下后台日志')
     return bufs
   })().finally(() => inflight.delete(key))

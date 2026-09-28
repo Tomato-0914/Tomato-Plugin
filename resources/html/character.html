@@ -9,88 +9,109 @@
     --line: #E2D8C7;
     --line-deep: #D6C8B0;
     --ink: #2E2A25;
-    --ink-soft: #6F665A;
-    --brown: #9C6B3C;
+    --ink-soft: #5F574C;
     --accent: #9C6B3C;
     --sans: "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "HarmonyOS Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); }
-  body { font-family: var(--sans); color: var(--ink); font-size: 16px; line-height: 1.7; }
+  /* 手机上图片会被缩到屏幕宽（约 360~430 逻辑像素），画布 800 宽时正文 19px 缩完大约 9~10 号字，勉强是聊天正文的大小 */
+  body { font-family: var(--sans); color: var(--ink); font-size: 19px; line-height: 1.75; }
   #container {
-    position: relative; display: flex; flex-direction: column; width: {{width}}px;{{if height}} height: {{height}}px;{{/if}} padding: 36px 44px 22px; overflow: hidden;
+    position: relative; display: flex; flex-direction: column; gap: 18px; width: {{width}}px; padding: 34px 34px 20px; overflow: hidden;
     background: repeating-linear-gradient(90deg, rgba(120, 100, 70, .025) 0 2px, transparent 2px 26px), var(--bg);
   }
 
   /* 外框：双线描边 + 四角圆点 */
   .frame, .frame::after { position: absolute; border: 1.5px solid var(--line-deep); pointer-events: none; }
-  .frame { inset: 12px; border-radius: 18px; }
-  .frame::after { content: ""; inset: 5px; border-width: 1px; border-color: var(--line); border-radius: 14px; }
+  .frame { inset: 10px; border-radius: 16px; }
+  .frame::after { content: ""; inset: 5px; border-width: 1px; border-color: var(--line); border-radius: 12px; }
   .corner { position: absolute; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line-deep); background: var(--bg); }
-  .corner.tl { left: 7px; top: 7px; } .corner.tr { right: 7px; top: 7px; }
-  .corner.bl { left: 7px; bottom: 7px; } .corner.br { right: 7px; bottom: 7px; }
+  .corner.tl { left: 5px; top: 5px; } .corner.tr { right: 5px; top: 5px; }
+  .corner.bl { left: 5px; bottom: 5px; } .corner.br { right: 5px; bottom: 5px; }
+  #container > :not(.frame):not(.corner) { position: relative; }
 
-  .main { position: relative; display: grid; grid-template-columns: 340px 1fr; gap: 32px; align-items: start; margin-top: 6px; }
-  .left, .right { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  /* 标题 */
+  .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .title { margin: 0; font-size: 40px; font-weight: 900; letter-spacing: 1px; line-height: 1.25; color: var(--ink); }
+  .title .accent { color: var(--accent); }
+  .title small { font-size: 26px; font-weight: 700; color: var(--ink-soft); letter-spacing: 2px; }
+  .brand { flex: none; margin-top: 8px; font-size: 20px; color: var(--accent); letter-spacing: 2px; opacity: .85; }
+  .stars { display: flex; gap: 5px; margin-top: -8px; }
+  .stars svg { width: 30px; height: 30px; filter: drop-shadow(0 2px 2px rgba(180, 120, 0, .25)); }
 
-  /* 左侧：角色立绘。喵喵的本地图统一是竖长的半身/全身立绘，裁剪铺满固定展示框最好看；
-     观测枢兜底的图构图和尺寸都不固定（常是大幅场景插画，接口也不返回图片尺寸），裁剪或者留白装进
-     固定框里都不合适，改成不设死框高度，让框跟着图片自己的比例走，完整显示、不裁剪也不留白 */
-  .art { position: relative; flex: none; border-radius: 14px; overflow: hidden; border: 2px solid var(--line-deep); background: linear-gradient(160deg, #F4EEE3, #EADFCB); box-shadow: inset 0 0 0 4px #FBF8F2; }
-  .art.fixed { height: 460px; }
-  .art-img { display: block; width: 100%; height: auto; }
-  .art-img.local { height: 100%; object-fit: cover; object-position: 50% 6%; }
-  .art-empty { width: 100%; height: 100%; min-height: 200px; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #A89E8E; letter-spacing: 2px; }
-
-  .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); }
-  .block { padding: 16px 26px 18px; }
-  .block h2 { margin: 0 0 12px; text-align: center; font-size: 24px; font-weight: 500; color: #4E4841; letter-spacing: 3px; }
-  .rich { font-size: 16px; line-height: 1.8; color: var(--ink-soft); overflow-wrap: anywhere; }
-  .rich p { margin: 0 0 .5em; }
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); padding: 16px 22px 18px; }
+  .card h2 { margin: 0 0 12px; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 24px; font-weight: 700; color: #4E4841; letter-spacing: 3px; }
+  .card h2::before, .card h2::after { content: ""; flex: 1; max-width: 90px; height: 1px; background: linear-gradient(90deg, transparent, var(--line-deep)); }
+  .card h2::after { transform: scaleX(-1); }
+  .card .note { margin: -6px 0 12px; text-align: center; font-size: 15px; color: #8C8375; }
+  .rich { color: var(--ink-soft); overflow-wrap: anywhere; }
+  .rich p { margin: 0 0 .45em; }
   .rich p:last-child { margin-bottom: 0; }
   .rich .hl { color: var(--accent); }
-  .summary { margin: 8px 0 4px; font-size: 15px; }
+  .summary { font-size: 18px; }
 
-  /* 右侧：标题 */
-  .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-  .title { margin: 4px 0 0; font-size: 46px; font-weight: 900; letter-spacing: 2px; line-height: 1.2; color: var(--ink); }
-  .title .accent { color: var(--accent); }
-  .brand { flex: none; margin-top: 12px; font-size: 24px; color: var(--accent); letter-spacing: 2px; opacity: .85; }
-  .stars { flex: none; display: flex; gap: 6px; margin: 4px 0 2px; }
-  .stars svg { width: 34px; height: 34px; filter: drop-shadow(0 2px 2px rgba(180, 120, 0, .25)); }
+  /* 首页：立绘 + 资料/属性 */
+  .main { display: grid; grid-template-columns: 290px 1fr; gap: 18px; align-items: start; }
+  .side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  /* 喵喵本地立绘是竖长的半身/全身图，裁剪铺满固定高度的框；观测枢的图构图不固定，框跟着图片比例走，完整显示 */
+  .art { position: relative; border-radius: 12px; overflow: hidden; border: 2px solid var(--line-deep); background: linear-gradient(160deg, #F4EEE3, #EADFCB); box-shadow: inset 0 0 0 4px #FBF8F2; }
+  .art.fixed { height: 440px; }
+  .art-img { display: block; width: 100%; height: auto; }
+  .art-img.local { height: 100%; object-fit: cover; object-position: 50% 6%; }
+  .art-empty { width: 100%; height: 100%; min-height: 200px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: #A89E8E; letter-spacing: 2px; }
 
-  /* 信息 / 属性方块 */
-  .stats { display: flex; flex-wrap: wrap; gap: 12px 16px; padding: 4px; }
-  .stat { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 16px; background: #fff; border: 1px solid var(--line); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); font-size: 19px; line-height: 1.5; }
-  .stat-k { flex: none; font-weight: 700; color: var(--accent); }
-  .stat-v { text-align: right; color: var(--ink-soft); white-space: nowrap; }
+  .kv { display: flex; flex-direction: column; }
+  .kv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 2px; }
+  .kv-row + .kv-row { border-top: 1px dashed var(--line); }
+  .kv-k { flex: none; font-weight: 700; color: var(--accent); }
+  .kv-v { min-width: 0; text-align: right; color: var(--ink-soft); }
 
-  /* 突破材料 / 推荐装备：小图标网格 */
-  .icons { display: flex; flex-wrap: wrap; gap: 12px 17px; justify-content: center; }
-  .icon-cell { width: 82px; }
-  .tile { position: relative; width: 72px; height: 72px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #6E8FB0, #4F6E8E); box-shadow: 0 2px 4px rgba(40, 30, 20, .18); }
+  /* 材料 / 推荐装备：图标网格 */
+  .icons { display: flex; flex-wrap: wrap; gap: 14px 12px; justify-content: center; }
+  .icon-cell { width: 108px; }
+  .tile { position: relative; width: 84px; height: 84px; margin: 0 auto; border-radius: 9px; overflow: hidden; background: linear-gradient(160deg, #6E8FB0, #4F6E8E); box-shadow: 0 2px 4px rgba(40, 30, 20, .18); }
   .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  /* 突破材料的图标素材留白差别很大（矿石类几乎贴边，其他类留白不少），加内边距 + 改用 contain 避免忽大忽小；
-     推荐装备的武器/圣遗物图标本身就是統一规格的方形图（还带星级角标），保持原来铺满的样式更好看，两者分开处理 */
-  .tile.mat { padding: 9px; }
+  /* 材料图标留白差别很大，加内边距 + contain 统一大小；推荐装备是统一规格的方图，保持铺满 */
+  .tile.mat { padding: 10px; }
   .tile.mat img { object-fit: contain; }
-  .tile .num { position: absolute; right: -20px; bottom: 7px; width: 66px; transform: rotate(-45deg); background: #E0473E; color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; }
-  .icon-name { margin-top: 4px; font-size: 13.5px; line-height: 1.3; text-align: center; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tile .num { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(30, 24, 18, .62); color: #fff; font-size: 15px; font-weight: 700; line-height: 22px; text-align: center; }
+  .icon-name { margin-top: 5px; font-size: 15px; line-height: 1.35; text-align: center; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-  /* 天赋 / 命之座：一行一个，图标 + 名称 + 说明 */
-  .skill-list { display: flex; flex-direction: column; }
-  .skill-item { display: flex; gap: 16px; padding: 14px 0; }
-  .skill-item + .skill-item { border-top: 1px dashed var(--line); }
-  .skill-icon { flex: none; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(160deg, #EDE3D3, #D9C7AB); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line); }
-  .skill-icon img { width: 72%; height: 72%; object-fit: contain; }
-  .skill-body { flex: 1; min-width: 0; }
-  .skill-head { display: flex; align-items: baseline; gap: 10px; }
-  .skill-name { font-size: 20px; font-weight: 700; color: var(--ink); }
-  .skill-tag { font-size: 13px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 8px; opacity: .85; }
-  .skill-desc { margin-top: 6px; font-size: 15px; line-height: 1.8; color: var(--ink-soft); }
-  .const-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; }
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  .cv { font-size: 17px; }
+  .dish { display: flex; gap: 14px; align-items: flex-start; }
+  .dish .tile { flex: none; margin: 0; }
+  .dish-name { font-weight: 700; color: var(--ink); }
+  .dish-lines { font-size: 16px; line-height: 1.65; color: var(--ink-soft); }
+  .dish-lines p { margin: 0 0 .3em; }
+  .namecard { display: block; width: 100%; height: auto; border-radius: 10px; border: 2px solid var(--line-deep); }
 
-  .foot { position: relative; flex: none; margin-top: 20px; display: flex; justify-content: space-between; font-size: 12px; color: #A89E8E; }
+  /* 天赋 / 命之座 */
+  .skill { display: flex; flex-direction: column; gap: 10px; }
+  .skill-head { display: flex; align-items: center; gap: 14px; }
+  .skill-icon { flex: none; width: 58px; height: 58px; border-radius: 50%; background: linear-gradient(160deg, #7B6A55, #4E4236); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--line-deep); }
+  .skill-icon img { width: 74%; height: 74%; object-fit: contain; }
+  .skill-name { font-size: 24px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+  .skill-tag { flex: none; margin-left: auto; font-size: 15px; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; padding: 1px 10px; }
+  .skill-desc { font-size: 18px; line-height: 1.8; }
+
+  table.scale { width: 100%; border-collapse: collapse; font-size: 16px; line-height: 1.45; background: #fff; border: 1px solid var(--line); }
+  table.scale th, table.scale td { padding: 6px 8px; border: 1px solid var(--line); text-align: center; }
+  table.scale thead th { background: #EFE8DC; color: #4E4841; font-weight: 700; }
+  table.scale tbody th { text-align: left; font-weight: 500; color: var(--ink); background: #FBF8F2; width: 30%; }
+  table.scale td { color: var(--ink-soft); }
+  table.scale tbody tr:nth-child(even) td { background: #FCFAF6; }
+
+  .cons-list { display: flex; flex-direction: column; }
+  .cons-item { padding: 14px 0; }
+  .cons-item:first-child { padding-top: 2px; }
+  .cons-item + .cons-item { border-top: 1px dashed var(--line); }
+  .cons-item .skill-desc { margin-top: 8px; }
+  .lv { flex: none; margin-left: auto; font-size: 16px; font-weight: 700; color: #fff; background: var(--accent); border-radius: 5px; padding: 1px 10px; }
+  .sub-title { margin: 4px 0 10px; text-align: center; font-size: 17px; color: #8C8375; letter-spacing: 2px; }
+
+  .foot { display: flex; justify-content: space-between; font-size: 13px; color: #A89E8E; }
 </style>
 </head>
 <body style="{{bodyStyle}}">
@@ -107,6 +128,7 @@
     </defs>
   </svg>
 
+  {{if page === 'overview'}}
   <div class="title-row">
     <h1 class="title">「{{if title}}<span class="accent">{{title}}</span> · {{/if}}{{name}}」</h1>
     <span class="brand">观测枢</span>
@@ -117,85 +139,133 @@
   </div>
   {{/if}}
 
-  {{if summary}}<div class="summary rich">{{@ summary}}</div>{{/if}}
-
-  <div class="stats">
-    {{if element}}<div class="stat"><span class="stat-k">元素:</span><span class="stat-v">{{element}}</span></div>{{/if}}
-    {{if weaponType}}<div class="stat"><span class="stat-k">武器:</span><span class="stat-v">{{weaponType}}</span></div>{{/if}}
-    {{if constellationName}}<div class="stat"><span class="stat-k">命之座:</span><span class="stat-v">{{constellationName}}</span></div>{{/if}}
-    {{if birthday}}<div class="stat"><span class="stat-k">生日:</span><span class="stat-v">{{birthday}}</span></div>{{/if}}
-    {{if affiliation}}<div class="stat"><span class="stat-k">所属:</span><span class="stat-v">{{affiliation}}</span></div>{{/if}}
-    {{if position}}<div class="stat"><span class="stat-k">定位:</span><span class="stat-v">{{position}}</span></div>{{/if}}
-  </div>
+  {{if summary}}<div class="card summary rich">{{@ summary}}</div>{{/if}}
 
   <div class="main">
-    <section class="left">
-      <div class="art{{if local || !image}} fixed{{/if}}">
-        {{if image}}<img class="art-img{{if local}} local{{/if}}" src="{{image}}" referrerpolicy="no-referrer">{{else}}<div class="art-empty">未获取到图片</div>{{/if}}
+    <div class="art{{if local || !image}} fixed{{/if}}">
+      {{if image}}<img class="art-img{{if local}} local{{/if}}" src="{{image}}" referrerpolicy="no-referrer">{{else}}<div class="art-empty">未获取到图片</div>{{/if}}
+    </div>
+    <div class="side">
+      <div class="card">
+        <h2>基础资料</h2>
+        <div class="kv">
+          {{if element}}<div class="kv-row"><span class="kv-k">元素</span><span class="kv-v">{{element}}</span></div>{{/if}}
+          {{if weaponType}}<div class="kv-row"><span class="kv-k">武器</span><span class="kv-v">{{weaponType}}</span></div>{{/if}}
+          {{if position}}<div class="kv-row"><span class="kv-k">定位</span><span class="kv-v">{{position}}</span></div>{{/if}}
+          {{if affiliation}}<div class="kv-row"><span class="kv-k">所属</span><span class="kv-v">{{affiliation}}</span></div>{{/if}}
+          {{if birthday}}<div class="kv-row"><span class="kv-k">生日</span><span class="kv-v">{{birthday}}</span></div>{{/if}}
+          {{if constellationName}}<div class="kv-row"><span class="kv-k">命之座</span><span class="kv-v">{{constellationName}}</span></div>{{/if}}
+        </div>
       </div>
-
-      {{if cv}}
-      <div class="card block">
-        <h2>角色配音</h2>
-        <div class="rich">{{@ cv}}</div>
-      </div>
-      {{/if}}
-    </section>
-
-    <section class="right">
       {{if stats.length}}
-      <div class="card block">
-        <h2>90 级基础属性</h2>
-        <div class="stats">
-          {{each stats s}}<div class="stat"><span class="stat-k">{{s.key}}:</span><span class="stat-v">{{s.value}}</span></div>{{/each}}
+      <div class="card">
+        <h2>满级属性</h2>
+        <div class="kv">
+          {{each stats s}}<div class="kv-row"><span class="kv-k">{{s.key}}</span><span class="kv-v">{{s.value}}</span></div>{{/each}}
         </div>
       </div>
       {{/if}}
-
-      {{if materials.length}}
-      <div class="card block">
-        <h2>突破材料</h2>
-        <div class="icons">
-          {{each materials m}}
-          <div class="icon-cell">
-            <div class="tile mat">{{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}{{if m.num}}<span class="num">×{{m.num}}</span>{{/if}}</div>
-            <span class="icon-name">{{m.name}}</span>
-          </div>
-          {{/each}}
-        </div>
-      </div>
-      {{/if}}
-    </section>
+    </div>
   </div>
 
-  {{if talents.length}}
-  <div class="card block" style="margin-top: 18px">
-    <h2>天赋</h2>
-    <div class="skill-list">
-      {{each talents t}}
-      <div class="skill-item">
-        <div class="skill-icon">{{if t.icon}}<img src="{{t.icon}}" referrerpolicy="no-referrer">{{/if}}</div>
-        <div class="skill-body">
-          <div class="skill-head"><span class="skill-name">{{t.name}}</span>{{if t.tag}}<span class="skill-tag">{{t.tag}}</span>{{/if}}</div>
-          {{if t.desc}}<div class="skill-desc rich">{{@ t.desc}}</div>{{/if}}
-        </div>
+  {{if materials.length}}
+  <div class="card">
+    <h2>突破材料</h2>
+    <p class="note">1 → 90 级突破合计</p>
+    <div class="icons">
+      {{each materials m}}
+      <div class="icon-cell">
+        <div class="tile mat">{{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}{{if m.num}}<span class="num">×{{m.num}}</span>{{/if}}</div>
+        <span class="icon-name">{{m.name}}</span>
       </div>
       {{/each}}
     </div>
   </div>
   {{/if}}
 
-  {{if constellations.length}}
-  <div class="card block" style="margin-top: 18px">
-    <h2>命之座</h2>
-    <div class="const-grid">
-      {{each constellations c}}
-      <div class="skill-item">
-        <div class="skill-icon">{{if c.icon}}<img src="{{c.icon}}" referrerpolicy="no-referrer">{{/if}}</div>
-        <div class="skill-body">
-          <div class="skill-head"><span class="skill-name">{{c.level}}命 · {{c.name}}</span></div>
-          {{if c.desc}}<div class="skill-desc rich">{{@ c.desc}}</div>{{/if}}
+  {{if talentMaterials.length}}
+  <div class="card">
+    <h2>天赋升级材料</h2>
+    <p class="note">单个天赋 1 → 10 级合计，三个战斗天赋全满需 ×3</p>
+    <div class="icons">
+      {{each talentMaterials m}}
+      <div class="icon-cell">
+        <div class="tile mat">{{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}{{if m.num}}<span class="num">×{{m.num}}</span>{{/if}}</div>
+        <span class="icon-name">{{m.name}}</span>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
+  {{if cv || dish}}
+  <div class="{{if cv && dish}}duo{{else}}side{{/if}}">
+    {{if cv}}
+    <div class="card">
+      <h2>角色配音</h2>
+      <div class="rich cv">{{@ cv}}</div>
+    </div>
+    {{/if}}
+    {{if dish}}
+    <div class="card">
+      <h2>特殊料理</h2>
+      <div class="dish">
+        <div class="tile mat">{{if dish.img}}<img src="{{dish.img}}" referrerpolicy="no-referrer">{{/if}}</div>
+        <div class="dish-lines">
+          <p class="dish-name">{{dish.name}}</p>
+          {{each dish.lines l}}<p>{{l}}</p>{{/each}}
         </div>
+      </div>
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  {{if namecard}}<img class="namecard" src="{{namecard}}" referrerpolicy="no-referrer">{{/if}}
+  {{/if}}
+
+  {{if page === 'talents'}}
+  <div class="title-row">
+    <h1 class="title">「{{name}}」<small>天赋</small></h1>
+    <span class="brand">观测枢</span>
+  </div>
+  {{each talents t}}
+  <div class="card skill">
+    <div class="skill-head">
+      <div class="skill-icon">{{if t.icon}}<img src="{{t.icon}}" referrerpolicy="no-referrer">{{/if}}</div>
+      <span class="skill-name">{{t.name}}</span>
+      {{if t.tag}}<span class="skill-tag">{{t.tag}}</span>{{/if}}
+    </div>
+    {{if t.desc}}<div class="skill-desc rich">{{@ t.desc}}</div>{{/if}}
+    {{if t.table}}
+    <table class="scale">
+      <thead><tr><th></th>{{each t.table.cols c}}<th>{{c}}</th>{{/each}}</tr></thead>
+      <tbody>
+        {{each t.table.rows r}}<tr><th>{{r.key}}</th>{{each r.values v}}<td>{{v}}</td>{{/each}}</tr>{{/each}}
+      </tbody>
+    </table>
+    {{/if}}
+  </div>
+  {{/each}}
+  {{/if}}
+
+  {{if page === 'cons'}}
+  <div class="title-row">
+    <h1 class="title">「{{name}}」<small>命之座</small></h1>
+    <span class="brand">观测枢</span>
+  </div>
+  {{if constellations.length}}
+  <div class="card">
+    {{if constellationName}}<p class="sub-title">{{constellationName}}</p>{{/if}}
+    <div class="cons-list">
+      {{each constellations c}}
+      <div class="cons-item">
+        <div class="skill-head">
+          <div class="skill-icon">{{if c.icon}}<img src="{{c.icon}}" referrerpolicy="no-referrer">{{/if}}</div>
+          <span class="skill-name">{{c.name}}</span>
+          <span class="lv">{{c.level}} 命</span>
+        </div>
+        {{if c.desc}}<div class="skill-desc rich">{{@ c.desc}}</div>{{/if}}
       </div>
       {{/each}}
     </div>
@@ -203,8 +273,9 @@
   {{/if}}
 
   {{if recommendWeapons.length || recommendArtifacts.length}}
-  <div class="card block" style="margin-top: 18px">
+  <div class="card">
     <h2>推荐装备</h2>
+    <p class="note">观测枢编辑推荐，仅供参考</p>
     {{if recommendWeapons.length}}
     <div class="icons">
       {{each recommendWeapons w}}
@@ -216,7 +287,7 @@
     </div>
     {{/if}}
     {{if recommendArtifacts.length}}
-    <div class="icons" style="margin-top: 14px">
+    <div class="icons" style="margin-top: 16px">
       {{each recommendArtifacts a}}
       <div class="icon-cell">
         <div class="tile">{{if a.img}}<img src="{{a.img}}" referrerpolicy="no-referrer">{{/if}}</div>
@@ -227,10 +298,11 @@
     {{/if}}
   </div>
   {{/if}}
+  {{/if}}
 
   <footer class="foot">
     <span>数据来源：米游社观测枢，内容版权归米哈游所有</span>
-    <span>{{time}}</span>
+    <span>{{if pageCount > 1}}{{pageNo}}/{{pageCount}} · {{/if}}{{time}}</span>
   </footer>
 </div>
 
