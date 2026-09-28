@@ -284,7 +284,10 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
       // 观测枢的是自带品质底色和星级的卡片图，模板里不加内边距直接铺满方块（local=false），不然就成了框里套框
       materials: character.materials.map(charMat),
       talentMaterials: (character.talentMaterials || []).map(charMat),
-      constellations: character.constellations.map(c => ({ ...c, icon: characterConsArt(character.name, c.level, cc.artDir) || c.icon })),
+      constellations: character.constellations.map(c => {
+        const local = characterConsArt(character.name, c.level, cc.artDir)
+        return { ...c, icon: local || c.icon, localIcon: !!local }
+      }),
       stars: Array.from({ length: Math.min(character.star || 0, 5) }, (_, i) => i),
       width: SIZE.character,
       height: 0,
