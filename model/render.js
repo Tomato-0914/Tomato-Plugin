@@ -11,6 +11,7 @@ const TPL = path.join(pluginRoot, 'resources', 'html', 'entry.html')
 const WTPL = path.join(pluginRoot, 'resources', 'html', 'weapon.html')
 const CTPL = path.join(pluginRoot, 'resources', 'html', 'card.html')
 const ChTPL = path.join(pluginRoot, 'resources', 'html', 'character.html')
+const HTPL = path.join(pluginRoot, 'resources', 'html', 'help.html')
 
 let renderer = null
 async function getRenderer () {
@@ -301,4 +302,19 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
 
   inflight.set(key, job)
   return job
+}
+
+/** 渲染帮助页（网页排版，不是纯文字）；调用方自己接住失败情况，退回纯文字帮助 */
+export async function renderHelp (gameKey, view) {
+  const cfg = getConfig()
+  const r = cfg.render || {}
+  const data = {
+    ...view,
+    width: 1280,
+    height: 0,
+    time: new Date().toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })
+  }
+  const bufs = await enqueue(() => doRender(gameKey, { id: 'help', title: '帮助' }, data, r, HTPL))
+  if (!bufs.length) throw new Error('渲染器没有返回图片，看一下后台日志')
+  return bufs
 }

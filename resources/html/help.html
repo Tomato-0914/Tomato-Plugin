@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #F3F1ED;
+    --card: #FAF9F6;
+    --line: #E2D8C7;
+    --line-deep: #D6C8B0;
+    --ink: #2E2A25;
+    --ink-soft: #6F665A;
+    --brown: #9C6B3C;
+    --hl: #E0473E;
+    --sans: "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "HarmonyOS Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+    --mono: "Cascadia Code", "Consolas", "Noto Sans Mono CJK SC", var(--sans);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  body { font-family: var(--sans); color: var(--ink); font-size: 15px; line-height: 1.7; }
+  #container {
+    position: relative; display: flex; flex-direction: column; width: {{width}}px; padding: 36px 44px 22px; overflow: hidden;
+    background: repeating-linear-gradient(90deg, rgba(120, 100, 70, .025) 0 2px, transparent 2px 26px), var(--bg);
+  }
+  .frame, .frame::after { position: absolute; border: 1.5px solid var(--line-deep); pointer-events: none; }
+  .frame { inset: 12px; border-radius: 18px; }
+  .frame::after { content: ""; inset: 5px; border-width: 1px; border-color: var(--line); border-radius: 14px; }
+  .corner { position: absolute; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line-deep); background: var(--bg); }
+  .corner.tl { left: 7px; top: 7px; } .corner.tr { right: 7px; top: 7px; }
+  .corner.bl { left: 7px; bottom: 7px; } .corner.br { right: 7px; bottom: 7px; }
+
+  .head { position: relative; text-align: center; padding: 10px 0 22px; }
+  .head h1 { margin: 0; font-size: 40px; font-weight: 900; letter-spacing: 4px; }
+  .head p { margin: 8px 0 0; font-size: 15px; color: var(--ink-soft); }
+
+  .grid { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 10px rgba(120, 100, 70, .08); border: 1px solid rgba(226, 216, 199, .6); padding: 18px 24px 20px; }
+  .card.wide { grid-column: 1 / -1; }
+  .card.admin { background: #FBF3EC; border-color: #E8C9A8; }
+  .card h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; color: var(--brown); display: flex; align-items: center; gap: 8px; }
+  .card h2 .tag { font-size: 11px; font-weight: 700; color: #fff; background: var(--hl); border-radius: 4px; padding: 1px 7px; letter-spacing: 1px; }
+  .card .sub { margin: 0 0 12px; font-size: 12.5px; color: var(--ink-soft); }
+
+  .row { display: flex; gap: 12px; padding: 7px 0; align-items: baseline; }
+  .row + .row { border-top: 1px dashed var(--line); }
+  .cmd { flex: none; font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 3px 9px; white-space: nowrap; }
+  .admin .cmd { background: #fff; border-color: #E8C9A8; }
+  .desc { flex: 1; min-width: 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; }
+  .desc b { color: var(--ink); font-weight: 700; }
+  .desc .cmd { font-size: 12.5px; padding: 1px 6px; margin: 0 1px; }
+
+  .cols2 .row { flex-wrap: wrap; }
+  .taglist { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .taglist span { font-size: 12px; background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; color: var(--brown); }
+
+  .foot { position: relative; flex: none; margin-top: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #A89E8E; text-align: center; }
+  .foot .cfg { font-size: 12px; color: var(--ink-soft); }
+</style>
+</head>
+<body style="{{bodyStyle}}">
+<div id="container">
+  <div class="frame"></div>
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+  <div class="head">
+    <h1>观测枢图鉴 · {{gameName}}</h1>
+    <p>实时读取米游社观测枢数据出图，不用下载图库，官方更新后自动跟上</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>查询条目</h2>
+      <p class="sub">武器、圣遗物、食物、敌人、秘境、角色都支持；名称的一部分也能模糊匹配（比如"雾切"→雾切之回光）</p>
+      <div class="row"><span class="cmd">#护摩之杖图鉴</span><span class="desc">或 <b class="cmd">#图鉴护摩之杖</b>，最标准的写法，哪个分类都能查</span></div>
+      <div class="row"><span class="cmd">护摩之杖</span><span class="desc">不带 # 也不带"图鉴"直接发也能查，但只对 <b>{{bareCategories}}</b> 这几个分类生效，且名称/别名/料理名要完全对上</span></div>
+      <div class="row"><span class="cmd">#原石图鉴</span><span class="desc">道具类，以及原石、摩拉、鸟蛋这类容易和闲聊撞车的日常词，只认"带 #"或"带图鉴"这两种写法，单独发不触发</span></div>
+      <div class="row"><span class="cmd">#刻晴图鉴</span><span class="desc">角色也是同一套查询逻辑，出专门的角色资料卡（见下方）</span></div>
+    </div>
+
+    <div class="card">
+      <h2>别名 / 简称</h2>
+      <p class="sub">别名表在 resources/alias/{{game}}.yaml，整理自 miao-plugin（MIT）；自己加的写 config/alias/{{game}}.yaml，格式一样</p>
+      <div class="row"><span class="cmd">#护摩</span><span class="desc">预置的角色专武叫法、圣遗物套装简称，比如"护摩"→护摩之杖、"辰砂"→辰砂往生录</span></div>
+      <div class="row"><span class="cmd">#苍白</span><span class="desc">容易和闲聊常用词撞车的简称是"弱别名"（配置里前面带 #），只在消息带 <b>#</b> 或"<b>图鉴</b>"时才生效</span></div>
+      <div class="row"><span class="cmd">苍白</span><span class="desc">弱别名单独发不会触发，避免聊天时手滑误查（"苍白套"这种圣遗物简称除外，本身就是弱别名的固定搭配）</span></div>
+    </div>
+
+    <div class="card">
+      <h2>分类总览 / 按品质查</h2>
+      <p class="sub">列表按上线版本分组（数据来自 genshin-db），新版本在前，每行标注版本号</p>
+      <div class="row"><span class="cmd">#武器图鉴</span><span class="desc">总览：各品质条数 + 对应指令</span></div>
+      <div class="row"><span class="cmd">#五星武器图鉴</span><span class="desc">或 <b class="cmd">#金色武器图鉴</b>，该品质全部列出</span></div>
+      <div class="row"><span class="cmd">#敌人图鉴</span><span class="desc">没有品质概念的分类（敌人），直接按版本分组列出全部</span></div>
+      <div class="row"><span class="cmd">#背包图鉴</span><span class="desc">按游戏背包页签分开：养成道具/材料/贵重道具/任务/小道具</span></div>
+      <div class="row"><span class="cmd">#养成道具图鉴</span><span class="desc">具体页签；也可以发 <b class="cmd">#紫色贵重道具图鉴</b> 这种页签+品质组合</span></div>
+      <div class="row"><span class="cmd">#图鉴分类</span><span class="desc">看观测枢一共有哪些分类、每类多少条</span></div>
+    </div>
+
+    <div class="card">
+      <h2>角色图鉴 <span class="tag">NEW</span></h2>
+      <p class="sub">专门的角色资料卡：称号、命之座、生日、所属、定位、CV、满级属性、全部突破材料、天赋、命之座效果、观测枢自己的推荐武器/圣遗物（不含任何第三方持有率统计），配色跟着角色主题色走</p>
+      <div class="row"><span class="cmd">#刻晴图鉴</span><span class="desc">角色立绘优先用观测枢自己的图（每个角色都有），没有再用喵喵插件本地立绘兜底</span></div>
+      <div class="row"><span class="cmd">#刻晴天赋</span><span class="desc">这类细分查询暂未支持，天赋/命座信息已经在角色卡里了</span></div>
+    </div>
+
+    <div class="card">
+      <h2>特色料理</h2>
+      <p class="sub">奇怪/美味品质和特色料理（比如"普茹斯蒂司""奇怪的致水神"）在观测枢里没有单独条目，插件后台建了索引</p>
+      <div class="row"><span class="cmd">普茹斯蒂司</span><span class="desc">直接搜料理名，出这道料理自己的卡片（自己的图、效果、获得方式，并注明所属原料理）</span></div>
+      <div class="row"><span class="cmd">·</span><span class="desc">索引在插件启动后于后台建立，首次安装要等几分钟才能搜到全部</span></div>
+    </div>
+
+    <div class="card">
+      <h2>版本表</h2>
+      <p class="sub">分类列表里的上线版本数据来自 genshin-db（MIT），观测枢本身不提供版本信息</p>
+      <div class="row"><span class="cmd">#更新图鉴目录</span><span class="desc">立即同步一次版本表；插件每天零点也会自动同步，<b class="cmd">#图鉴更新</b> 会顺带触发</span></div>
+      <div class="row"><span class="cmd">·</span><span class="desc">数据存在 resources/version/{{game}}.yaml（运行时生成，不进 git）；自己补充/修正写 config/version/{{game}}.yaml</span></div>
+    </div>
+
+    <div class="card wide admin">
+      <h2>管理命令 <span class="tag">仅主人</span></h2>
+      <div class="row"><span class="cmd">#图鉴更新</span><span class="desc">重新拉取目录，顺带同步一次版本表；<b class="cmd">#图鉴强制更新</b> 额外清空全部详情缓存</span></div>
+      <div class="row"><span class="cmd">#更新图鉴目录</span><span class="desc">只同步版本表，不刷新目录</span></div>
+      <div class="row"><span class="cmd">#图鉴清除缓存</span><span class="desc">清空全部条目详情缓存；<b class="cmd">#图鉴清除缓存护摩之杖</b> 只清这一条，下次查询时重新拉取</span></div>
+      <div class="row"><span class="cmd">#图鉴调试护摩之杖</span><span class="desc">导出该条目新旧接口原始数据和结构摘要，方便反馈接口结构变化</span></div>
+      <div class="row"><span class="cmd">#更新图鉴</span><span class="desc">或 <b class="cmd">#强制更新图鉴</b>，从 git 远程更新插件本身并重启（需 git clone 安装），和上面刷新数据的命令是两回事</span></div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <span class="cfg">当前配置：优先级 {{priority}} · bareMatch {{bareMatch}} · 渲染精度 {{renderScale}}{{if skipCategories}} · 不响应分类：{{skipCategories}}{{/if}}</span>
+    <span>数据来源：米游社观测枢，内容版权归米哈游所有；别名表整理自 miao-plugin（MIT）；版本表整理自 genshin-db（MIT）</span>
+    <span>{{time}}</span>
+  </footer>
+</div>
+</body>
+</html>

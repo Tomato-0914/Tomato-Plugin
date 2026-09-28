@@ -3,7 +3,7 @@ import path from 'node:path'
 import { getConfig, dataRoot, ensureDir, pluginName } from '../model/config.js'
 import { ObcSource } from '../model/obc.js'
 import { matchEntry, listCategory, listItemType, itemTab, BAG_TABS, getAliases, getWeakAliases, getVersions, norm } from '../model/match.js'
-import { renderEntry } from '../model/render.js'
+import { renderEntry, renderHelp } from '../model/render.js'
 import { dishNames } from '../model/card.js'
 import { syncVersions, scheduleVersionSync, formatSyncResult } from '../model/versionSync.js'
 
@@ -82,7 +82,8 @@ function lookup (q, index, plain = false) {
 /** 清理旧版本留下的图片缓存目录 */
 fs.rmSync(path.join(dataRoot, GAME, 'render'), { recursive: true, force: true })
 
-const HELP = [
+/** 帮助页渲染失败时的纯文字兜底 */
+const HELP_FALLBACK = [
   '【观测枢图鉴 · 原神】',
   '#护摩之杖图鉴 或 #图鉴护摩之杖：查询条目，角色（如 #刻晴图鉴）也支持',
   '护摩之杖、#护摩、苍白套：武器、圣遗物、食物、敌人、秘境可直接发名称或别名',
@@ -284,8 +285,24 @@ export class ObcGenshin extends plugin {
     })
   }
 
+  /** 网页排版渲染的帮助图；渲染失败时退回纯文字 */
   async help () {
-    return this.reply(HELP)
+    const cfg = getConfig()
+    try {
+      const imgs = await renderHelp(GAME, {
+        gameName: cfg.games?.[GAME]?.name || '原神',
+        game: GAME,
+        bareCategories: (cfg.bareCategories || []).join('、') || '（无）',
+        priority: cfg.priority ?? -100,
+        bareMatch: cfg.bareMatch ? '开' : '关',
+        renderScale: `${cfg.renderScale ?? 100}%`,
+        skipCategories: (cfg.skipCategories || []).join('、')
+      })
+      return sendMany(this.e, imgs.map(buf => segment.image(buf)), '图鉴帮助')
+    } catch (err) {
+      logger.error(err)
+      return this.reply(HELP_FALLBACK)
+    }
   }
 
   async queryPrefix () {
