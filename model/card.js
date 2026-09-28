@@ -409,7 +409,8 @@ function artifact (entry, content, { pieceArt } = {}) {
     chars = (group?.data || []).filter(x => x?.name && isUrl(x.image)).map(x => ({ name: strip(x.name), img: x.image }))
   }
   // 部件立绘优先用喵喵插件的本地透明图，没有再用观测枢的图标兜底
-  if (pieceArt) pieces = pieces.map(p => ({ ...p, img: pieceArt(entry.title, p.slot) || p.img }))
+  // 按部位名 → 部件名 → 顺序依次匹配；顺序只在正好 5 件（花羽沙杯冠齐全）时才可信
+  if (pieceArt) pieces = pieces.map((p, i, all) => ({ ...p, img: pieceArt(entry.title, p.slot, p.name, all.length === 5 ? i : -1) || p.img }))
   if (!pieces.length && !Object.keys(info).length) return null
 
   const rarity = strip(info['稀有度'])

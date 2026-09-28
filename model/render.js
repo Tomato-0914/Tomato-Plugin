@@ -111,14 +111,39 @@ export function weaponArt (weapon, dir) {
 /** 圣遗物部件槽位 → 喵喵插件图片文件名（1~5 固定对应生之花/死之羽/时之沙/空之杯/理之冠） */
 const ARTIFACT_SLOT_IDX = { 生之花: 1, 死之羽: 2, 时之沙: 3, 空之杯: 4, 理之冠: 5 }
 
-/** 圣遗物部件立绘：优先用喵喵插件的本地图（透明底），没有再用观测枢的图标兜底 */
-export function artifactPieceArt (setName, slot, dir) {
-  const idx = ARTIFACT_SLOT_IDX[slot]
-  if (dir && idx && setName) {
-    const file = path.resolve(process.cwd(), dir, setName, `${idx}.webp`)
-    if (fs.existsSync(file)) return pathToFileURL(file).href
+const pieceIndexCache = new Map()
+/** 喵喵插件的圣遗物数据（imgs 目录的上一级 data.json）：部件名 → { set, idx } */
+function artifactPieceIndex (dir) {
+  if (pieceIndexCache.has(dir)) return pieceIndexCache.get(dir)
+  const map = new Map()
+  try {
+    const data = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), dir, '..', 'data.json'), 'utf8'))
+    for (const set of Object.values(data || {})) {
+      for (const [idx, piece] of Object.entries(set?.idxs || {})) {
+        if (piece?.name && set?.name) map.set(piece.name, { set: set.name, idx })
+      }
+    }
+  } catch {}
+  pieceIndexCache.set(dir, map)
+  return map
+}
+
+/**
+ * 圣遗物部件立绘：优先用喵喵插件的本地图（透明底，imgs/<套装名>/1~5.webp），没有再用观测枢的图标兜底。
+ * 依次按「部位名」「部件名（查喵喵的 data.json）」「部件顺序（花羽沙杯冠）」找，观测枢个别套装的部位名写法不标准时也能对上
+ */
+export function artifactPieceArt (setName, slot, dir, pieceName = '', order = -1) {
+  if (!dir) return ''
+  const fileOf = (set, idx) => {
+    if (!set || !idx) return ''
+    const file = path.resolve(process.cwd(), dir, set, `${idx}.webp`)
+    return fs.existsSync(file) ? pathToFileURL(file).href : ''
   }
-  return ''
+  const bySlot = Object.entries(ARTIFACT_SLOT_IDX).find(([k]) => String(slot || '').includes(k))?.[1]
+  const byName = artifactPieceIndex(dir).get(pieceName)
+  return fileOf(setName, bySlot) ||
+    (byName ? fileOf(byName.set, byName.idx) : '') ||
+    (order >= 0 && order < 5 ? fileOf(setName, order + 1) : '')
 }
 
 /**
@@ -220,7 +245,7 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
   const r = cfg.render || {}
   const weapon = entry.path.includes('武器') ? extractWeapon(content) : null
   const character = !weapon && entry.path.includes('角色') ? extractCharacter(content) : null
-  const pieceArt = (setName, slot) => artifactPieceArt(setName, slot, cfg.artifact?.artDir)
+  const pieceArt = (setName, slot, name, order) => artifactPieceArt(setName, slot, cfg.artifact?.artDir, name, order)
   const matIcon = name => materialIcon(name, cfg.material?.artDir)
   const card = (weapon || character) ? null : buildCard(entry, content, { dish, iconOf, pieceArt, matIcon })
 
