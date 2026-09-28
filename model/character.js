@@ -161,6 +161,7 @@ function extractNewCharacter (content) {
   const cvHtml = String(ws.find(w => w.module === '角色CV')?.data?.rich_text || '').replace(/<p>\s*四国语音展示请下划浏览\s*<\/p>\s*$/i, '')
   const cv = clean(cvHtml)
   const summary = extractOverview(ws)
+  const businessCard = ws.find(w => w.id === 'business_card')?.data || {}
 
   return {
     name: strip(base.name),
@@ -184,7 +185,8 @@ function extractNewCharacter (content) {
     recommendWeapons: recommend('武器'),
     recommendArtifacts: recommend('圣遗物'),
     dish: specialDish(ws),
-    namecard: ws.find(w => w.id === 'business_card')?.data?.long_img || ''
+    // card_img 是名片横幅本身；long_img 是带「名片纹饰 / 获得方式」文字的整张说明长图，太占地方，只在没有横幅时兜底
+    namecard: businessCard.card_img || businessCard.long_img || ''
   }
 }
 
