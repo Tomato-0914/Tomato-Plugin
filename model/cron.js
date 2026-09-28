@@ -31,6 +31,20 @@ export function yearMatches (field, year) {
   })
 }
 
+/**
+ * 给锅巴 Cron 选择器用的写法。选择器打开前会用 cron-parser 的 parseString 校验，而 parseString 是按 crontab 文件解析的：
+ * 它会在前面补一个「0 」当秒，于是 7 段表达式整体错位一格，「日」落到了「月」的位置——日写 ? 就报「Cron表达式不正确」，
+ * 连选择器自己生成的按周执行（0 0 4 ? * 4 *）都打不开。
+ * 这里在指定了周的情况下把日的 ? 换成 *：两种写法意思一样（都是只按周执行），插件转换结果也一样，但能通过选择器的校验。
+ */
+export function pickerCron (expr) {
+  const text = String(expr ?? '').trim()
+  const parts = text.split(/\s+/).filter(Boolean)
+  if (parts.length !== 7) return text
+  if (parts[3] === '?' && parts[5] !== '?' && parts[5] !== '*') parts[3] = '*'
+  return parts.join(' ')
+}
+
 /** 返回 { cron, year }：cron 是给 node-schedule 用的表达式，year 是年份段（没有则为 '*'） */
 export function normalizeCron (expr) {
   const parts = String(expr ?? '').trim().split(/\s+/).filter(Boolean)
