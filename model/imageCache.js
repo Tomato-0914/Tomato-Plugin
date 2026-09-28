@@ -137,7 +137,7 @@ export function saveImages (game, entry, dish, label, bufs) {
 let clearJob = null
 /**
  * 按配置 imageCacheCron 定时清空图片缓存；留空不定时清理。启动时和锅巴保存配置后各调用一次，重复调用会先取消旧的定时任务。
- * 用 Yunzai 自带的 node-schedule；锅巴 Cron 选择器生成的 7 段 Quartz 表达式先转换（见 cron.js），
+ * 用 Yunzai 自带的 node-schedule；锅巴 Cron 选择器生成的 Quartz 表达式先转换（见 cron.js），
  * 手写的 Linux 风格 5 段（分 时 日 月 周）/ 6 段（秒 分 时 日 月 周）也照样能用
  */
 export async function scheduleImageClear (game) {

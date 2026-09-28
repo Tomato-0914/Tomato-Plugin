@@ -24,7 +24,7 @@ const schemas = [
 
   { component: 'Divider', label: '图片' },
   { field: 'imageCache', label: '图片缓存', component: 'Switch', bottomHelpMessage: '开启后渲染好的图存到 data/Tomato-Plugin/gs/Atlas/<分类>/<图鉴名>/（如 Atlas/角色/兹白/），再查直接发本地图，更快；数据不对时发 #图鉴清除图片缓存<名称> 重新生成。关闭不会删除已有缓存' },
-  { field: 'imageCacheCron', label: '定时清理图片缓存', component: 'EasyCron', bottomHelpMessage: '用选择器选时间，默认每周三凌晨 4 点，保存后立即生效；留空不定时清理。点「选择」提示「Cron表达式不正确」是锅巴选择器自身的校验问题（0 点、24 分以后等时间都会误报），先把框里清空再点「选择」重新选即可，不影响定时生效', componentProps: { placeholder: '0 0 4 * * 4 *' } },
+  { field: 'imageCacheCron', label: '定时清理图片缓存', component: 'EasyCron', bottomHelpMessage: '用选择器选时间，默认每周三凌晨 4 点，保存后立即生效；留空不定时清理。注意：按周选时，选择器里「近十次执行时间」会显示成后一天（锅巴预览的已知问题），实际按你勾选的星期执行', componentProps: { placeholder: '0 4 ? * 4', hideSecond: true } },
   { field: 'render.quality', label: '图片质量', component: 'InputNumber', bottomHelpMessage: 'JPEG 质量 1~100', componentProps: { min: 1, max: 100, placeholder: '90' } },
   { field: 'weapon.artDir', label: '武器立绘目录', component: 'Input', bottomHelpMessage: '喵喵插件的武器立绘目录（相对 Yunzai 根目录），找不到时用观测枢图标' },
 
