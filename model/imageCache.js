@@ -2,9 +2,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { getConfig, dataRoot, pluginRoot, pluginName } from './config.js'
+import { itemTab } from './match.js'
 
 /**
- * 图片缓存：渲染好的图存在 data/<插件名>/<game>/Atlas/<图鉴名>/1.jpg、2.jpg…，旁边一个 meta.json。
+ * 图片缓存：渲染好的图存在 data/<插件名>/<game>/Atlas/<分类>/<图鉴名>/1.jpg、2.jpg…，旁边一个 meta.json。
+ * 分类用观测枢的分类名（角色、武器、圣遗物、食物、敌人…），背包道具按游戏背包页签（养成道具、材料、小道具…）；
+ * 特色料理跟着所属的食物放在「食物」下。
  * 下次查同一个条目直接发本地图，不再拉详情、不再渲染。
  * 缓存不会自己过期，只在下面几种情况失效：手动清理、渲染精度/图片质量改了、插件更新后模板或解析代码有变化。
  */
@@ -57,10 +60,36 @@ function readMeta (dir) {
 
 const sameKey = (meta, entry, dish) => meta && String(meta.id) === String(entry.id) && (meta.dish || '') === (dish || '')
 
-/** 同名条目（不同分类里重名）或同名料理共用一个名字时，后来的放到「名字_id」文件夹 */
+/** 分类文件夹：背包道具用背包页签，其余用观测枢分类名 */
+function category (entry) {
+  const top = (entry.path || []).filter(p => p !== '图鉴')[0] || '其他'
+  return safeName(top === '背包' ? itemTab(entry) || top : top)
+}
+
+/** 同一分类里重名的条目，后来的放到「名字_id」文件夹 */
 function candidates (game, entry, label) {
+  cleanLegacy(game)
+  const dir = path.join(cacheRoot(game), category(entry))
   const name = safeName(label)
-  return [path.join(cacheRoot(game), name), path.join(cacheRoot(game), `${name}_${entry.id}`)]
+  return [path.join(dir, name), path.join(dir, `${name}_${entry.id}`)]
+}
+
+function subDirs (dir) {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => path.join(dir, d.name))
+  } catch {
+    return []
+  }
+}
+
+const legacyDone = new Set()
+/** 最早一版没有分类层，图直接放在 Atlas/<图鉴名>/ 下；这种旧文件夹直接删掉，下次查询按新结构重新生成 */
+function cleanLegacy (game) {
+  if (legacyDone.has(game)) return
+  legacyDone.add(game)
+  for (const d of subDirs(cacheRoot(game))) {
+    if (fs.existsSync(path.join(d, META))) fs.rmSync(d, { recursive: true, force: true })
+  }
 }
 
 /** 读缓存：命中返回 Buffer 数组，没有或已失效返回 null */
@@ -106,14 +135,20 @@ export function saveImages (game, entry, dish, label, bufs) {
 
 /** 清图片缓存：传 id 只清这个条目（食物连同它名下的特色料理），否则全部清空；返回清掉的文件夹数 */
 export function clearImages (game, id) {
-  const root = cacheRoot(game)
-  let dirs = []
-  try {
-    dirs = fs.readdirSync(root, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => path.join(root, d.name))
-  } catch {
-    return 0
+  cleanLegacy(game)
+  if (id === undefined) {
+    const n = subDirs(cacheRoot(game)).reduce((sum, c) => sum + subDirs(c).length, 0)
+    fs.rmSync(cacheRoot(game), { recursive: true, force: true })
+    return n
   }
-  const targets = id === undefined ? dirs : dirs.filter(d => String(readMeta(d)?.id) === String(id))
-  for (const d of targets) fs.rmSync(d, { recursive: true, force: true })
-  return targets.length
+  let n = 0
+  for (const c of subDirs(cacheRoot(game))) {
+    for (const d of subDirs(c)) {
+      if (String(readMeta(d)?.id) !== String(id)) continue
+      fs.rmSync(d, { recursive: true, force: true })
+      n++
+    }
+    if (!subDirs(c).length) fs.rmSync(c, { recursive: true, force: true })
+  }
+  return n
 }

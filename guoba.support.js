@@ -20,7 +20,7 @@ const schemas = [
   { field: 'strictTitles', label: '严格条目', component: 'GTags', bottomHelpMessage: '日常用词或与其他插件指令重名的条目，只认 #名称图鉴 / #图鉴名称', componentProps: { allowAdd: true, allowDel: true } },
 
   { component: 'Divider', label: '图片' },
-  { field: 'imageCache', label: '图片缓存', component: 'Switch', bottomHelpMessage: '开启后渲染好的图存到 data/Tomato-Plugin/gs/Atlas/<图鉴名>/，再查直接发本地图，更快；数据不对时发 #图鉴清除图片缓存<名称> 重新生成。关闭不会删除已有缓存' },
+  { field: 'imageCache', label: '图片缓存', component: 'Switch', bottomHelpMessage: '开启后渲染好的图存到 data/Tomato-Plugin/gs/Atlas/<分类>/<图鉴名>/（如 Atlas/角色/兹白/），再查直接发本地图，更快；数据不对时发 #图鉴清除图片缓存<名称> 重新生成。关闭不会删除已有缓存' },
   { field: 'render.quality', label: '图片质量', component: 'InputNumber', bottomHelpMessage: 'JPEG 质量 1~100', componentProps: { min: 1, max: 100, placeholder: '90' } },
   { field: 'weapon.artDir', label: '武器立绘目录', component: 'Input', bottomHelpMessage: '喵喵插件的武器立绘目录（相对 Yunzai 根目录），找不到时用观测枢图标' },
 
