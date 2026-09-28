@@ -522,7 +522,7 @@ export class ObcGenshin extends plugin {
       const pieces = (Array.isArray(content.widgets) ? content.widgets : []).filter(w => w.id === 'artifact_list_v2')
       const dir = getConfig().artifact?.artDir
       pieces.forEach((w, i) => {
-        const slot = plain(w.module)
+        const slot = plain(w.module) || plain(w.data?.name?.key).replace(/[：:]$/, '')
         const name = plain([].concat(w.data?.name?.value ?? w.data?.name ?? '').join(''))
         const art = artifactPieceArt(res.entry.title, slot, dir, name, pieces.length === 5 ? i : -1)
         pieceLines.push(`- 部位「${slot}」部件「${name}」→ ${art ? decodeURIComponent(art.replace(/^.*[\\/]imgs[\\/]/, '')) : '没对上喵喵的图，用观测枢图标'}`)

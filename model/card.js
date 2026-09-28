@@ -397,7 +397,13 @@ function artifact (entry, content, { pieceArt } = {}) {
   const base = ws.find(w => w.id === 'rich_base_info')
   if (base) {
     for (const x of base.data?.list || []) info[strip(x.key)] = clean([].concat(x.value ?? []).join(''))
-    pieces = ws.filter(w => w.id === 'artifact_list_v2').map(w => ({ slot: strip(w.module), name: strip(flat(w.data?.name)), img: w.data?.icon_url, desc: strip(flat(w.data?.desc)) }))
+    // 部位名一般是模块名；个别套装（如烬城勇者绘卷）模块名是空的，部位写在 name.key 里（「生之花：」）
+    pieces = ws.filter(w => w.id === 'artifact_list_v2').map(w => ({
+      slot: strip(w.module) || strip(w.data?.name?.key).replace(/[：:]$/, ''),
+      name: strip(flat(w.data?.name)),
+      img: w.data?.icon_url,
+      desc: strip(flat(w.data?.desc))
+    }))
     const table = (ws.find(w => w.id === 'multi_table')?.data?.tables || []).find(t => strip(t.tab_name).includes('角色'))
     chars = entryCards((table?.row || []).map(r => [].concat(r)[0] ?? '').join(''))
   } else {
