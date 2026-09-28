@@ -392,7 +392,7 @@ export class ObcGenshin extends plugin {
       imgs = await renderEntry(GAME, entry, content, {
         dish,
         iconOf: iconResolver(await source.getIndex().catch(() => [])),
-        onStart: () => getConfig().renderTip && this.reply(`正在生成「${label}」，请稍候…`)
+        onStart: () => getConfig().renderTip && this.reply(`正在生成图鉴「${label}」，请稍候…`)
       })
     } catch (err) {
       logger.error(err)
