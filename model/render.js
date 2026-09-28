@@ -247,11 +247,18 @@ export async function renderEntry (gameKey, entry, content, { onStart, dish, ico
   } else if (character) {
     tplFile = ChTPL
     const cc = cfg.character || {}
+    const charMat = m => {
+      const local = matIcon(m.name)
+      return { ...m, img: local || m.img, local: !!local }
+    }
     view = {
       ...character,
       element: character.element || (entry.tags || []).find(t => t.k === '元素')?.v || '',
       ...characterArt(character.name, character.image, cc.artDir),
-      materials: character.materials.map(m => ({ ...m, img: matIcon(m.name) || m.img })),
+      // 天赋材料和突破材料一样优先用喵喵的透明底图标；喵喵没有的（如智识之冕）才用观测枢的，
+      // 观测枢的是自带品质底色和星级的卡片图，模板里不加内边距直接铺满方块（local=false），不然就成了框里套框
+      materials: character.materials.map(charMat),
+      talentMaterials: (character.talentMaterials || []).map(charMat),
       constellations: character.constellations.map(c => ({ ...c, icon: characterConsArt(character.name, c.level, cc.artDir) || c.icon })),
       stars: Array.from({ length: Math.min(character.star || 0, 5) }, (_, i) => i),
       width: SIZE.character,

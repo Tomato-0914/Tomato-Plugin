@@ -79,7 +79,8 @@
   .icon-cell { width: 108px; }
   .tile { position: relative; width: 84px; height: 84px; margin: 0 auto; border-radius: 9px; overflow: hidden; background: linear-gradient(160deg, #6E8FB0, #4F6E8E); box-shadow: 0 2px 4px rgba(40, 30, 20, .18); }
   .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  /* 材料图标留白差别很大，加内边距 + contain 统一大小；推荐装备是统一规格的方图，保持铺满 */
+  /* 喵喵的透明底材料图标留白差别很大，加内边距 + contain 统一大小；
+     观测枢兜底的材料图和推荐装备一样是自带底色的方形卡片图，不加 .mat，直接铺满 */
   .tile.mat { padding: 10px; }
   .tile.mat img { object-fit: contain; }
   .tile .num { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(30, 24, 18, .62); color: #fff; font-size: 15px; font-weight: 700; line-height: 22px; text-align: center; }
@@ -183,7 +184,7 @@
     <div class="icons">
       {{each materials m}}
       <div class="icon-cell">
-        <div class="tile mat">{{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}{{if m.num}}<span class="num">×{{m.num}}</span>{{/if}}</div>
+        <div class="tile{{if m.local}} mat{{/if}}">{{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}{{if m.num}}<span class="num">×{{m.num}}</span>{{/if}}</div>
         <span class="icon-name">{{m.name}}</span>
       </div>
       {{/each}}
@@ -198,7 +199,7 @@
     <div class="icons">
       {{each talentMaterials m}}
       <div class="icon-cell">
-        <div class="tile mat">{{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}{{if m.num}}<span class="num">×{{m.num}}</span>{{/if}}</div>
+        <div class="tile{{if m.local}} mat{{/if}}">{{if m.img}}<img src="{{m.img}}" referrerpolicy="no-referrer">{{/if}}{{if m.num}}<span class="num">×{{m.num}}</span>{{/if}}</div>
         <span class="icon-name">{{m.name}}</span>
       </div>
       {{/each}}
@@ -218,7 +219,7 @@
     <div class="card">
       <h2>特殊料理</h2>
       <div class="dish">
-        <div class="tile mat">{{if dish.img}}<img src="{{dish.img}}" referrerpolicy="no-referrer">{{/if}}</div>
+        <div class="tile">{{if dish.img}}<img src="{{dish.img}}" referrerpolicy="no-referrer">{{/if}}</div>
         <div class="dish-lines">
           <p class="dish-name">{{dish.name}}</p>
           {{each dish.lines l}}<p>{{l}}</p>{{/each}}
