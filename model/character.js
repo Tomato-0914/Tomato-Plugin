@@ -185,8 +185,8 @@ function extractNewCharacter (content) {
     recommendWeapons: recommend('武器'),
     recommendArtifacts: recommend('圣遗物'),
     dish: specialDish(ws),
-    // card_img 是名片横幅本身；long_img 是带「名片纹饰 / 获得方式」文字的整张说明长图，太占地方，只在没有横幅时兜底
-    namecard: businessCard.card_img || businessCard.long_img || ''
+    // long_img 是观测枢「名片」模块的主图（名片预览 + 纹饰说明 + 获得方式）；card_img 只是好友列表里那一小条，太窄不用
+    namecard: businessCard.long_img || ''
   }
 }
 
