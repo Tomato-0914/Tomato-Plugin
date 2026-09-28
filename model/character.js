@@ -75,7 +75,9 @@ function talentTable (attr) {
   const rows = (Array.isArray(attr.row) ? attr.row : [])
     .map(r => [].concat(r))
     .filter(r => strip(r[0]) && !strip(r[0]).includes('升级材料'))
-    .map(r => ({ key: strip(r[0]), values: idx.map(i => strip(r[i])) }))
+    // 「+」「/」后面、数字和单位（防御力、生命值上限…）之间插零宽空格，长数值（34.6%+34.6%防御力）在窄列里
+    // 只从这些地方换行，配合模板里的 keep-all，不会从数字中间或者「防御|力」中间断开
+    .map(r => ({ key: strip(r[0]), values: idx.map(i => strip(r[i]).replace(/([+/])/g, '$1\u200b').replace(/([\d%])(?=[\u4e00-\u9fa5])/g, '$1\u200b')) }))
   return rows.length ? { cols: idx.map(i => header[i]), rows } : null
 }
 

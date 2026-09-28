@@ -96,11 +96,13 @@
   .skill-tag { flex: none; margin-left: auto; font-size: 15px; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; padding: 1px 10px; }
   .skill-desc { font-size: 18px; line-height: 1.8; }
 
-  table.scale { width: 100%; border-collapse: collapse; font-size: 16px; line-height: 1.45; background: #fff; border: 1px solid var(--line); }
-  table.scale th, table.scale td { padding: 6px 8px; border: 1px solid var(--line); text-align: center; }
+  /* 固定列宽：左侧名称列固定 25%，数值列平分剩下的；不然像兹白「34.6%+34.6%防御力」这种长数值会把名称列挤成一个字一行 */
+  table.scale { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 16px; line-height: 1.45; background: #fff; border: 1px solid var(--line); }
+  table.scale th, table.scale td { padding: 6px 4px; border: 1px solid var(--line); text-align: center; overflow-wrap: anywhere; }
   table.scale thead th { background: #EFE8DC; color: #4E4841; font-weight: 700; }
-  table.scale tbody th { text-align: left; font-weight: 500; color: var(--ink); background: #FBF8F2; width: 30%; }
-  table.scale td { color: var(--ink-soft); }
+  table.scale thead th:first-child { width: 25%; }
+  table.scale tbody th { text-align: left; font-weight: 500; color: var(--ink); background: #FBF8F2; }
+  table.scale td { color: var(--ink-soft); font-size: 15px; word-break: keep-all; }
   table.scale tbody tr:nth-child(even) td { background: #FCFAF6; }
 
   .cons-list { display: flex; flex-direction: column; }
