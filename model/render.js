@@ -205,7 +205,7 @@ export function renderScale () {
   return Math.min(300, Math.max(50, Number.isFinite(n) && n > 0 ? n : 100)) / 100
 }
 
-async function doRender (gameKey, entry, view, r, tplFile = TPL, multiPage = tplFile === TPL) {
+async function doRender (gameKey, entry, view, r, tplFile = TPL) {
   const rd = await getRenderer()
   const scale = renderScale()
   const pageCfg = JSON.stringify({
@@ -220,7 +220,7 @@ async function doRender (gameKey, entry, view, r, tplFile = TPL, multiPage = tpl
     saveId: `${gameKey}_${entry.id}`,
     imgType: 'jpeg',
     quality: r.quality || 90,
-    multiPage,
+    multiPage: tplFile === TPL,
     multiPageHeight: Math.round((r.pageHeight || 3500) * scale),
     pageGotoParams: { waitUntil: 'networkidle0', timeout: r.timeout || 60000 },
     width: SIZE.entry,
@@ -365,22 +365,6 @@ export async function renderHelp (gameKey, view) {
     time: new Date().toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })
   }
   const bufs = await enqueue(() => doRender(gameKey, { id: 'help', title: '帮助' }, data, r, HTPL))
-  if (!bufs.length) throw new Error('渲染器没有返回图片，看一下后台日志')
-  return bufs
-}
-
-/**
- * 渲染插件里其他功能（比如成就）自己的模板：view 直接交给模板；multiPage 为 true 时超过 render.pageHeight 自动切成多张。
- * 调用方自己接住失败情况
- */
-export async function renderTemplate (gameKey, entry, tplFile, view, { multiPage = false, width = 800 } = {}) {
-  const r = getConfig().render || {}
-  const data = {
-    width,
-    ...view,
-    time: new Date().toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })
-  }
-  const bufs = await enqueue(() => doRender(gameKey, entry, data, r, tplFile, multiPage))
   if (!bufs.length) throw new Error('渲染器没有返回图片，看一下后台日志')
   return bufs
 }
