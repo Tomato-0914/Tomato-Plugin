@@ -50,6 +50,13 @@ renderScale: 100
 # 图片张数超过这个值时改用合并转发
 forwardThreshold: 2
 
+# 成就查询 / 查漏 / 录入（#成就帮助）。数据来自 genshin-db（按游戏内成就 ID，和椰羊、胡桃工具箱的导出对得上），
+# 和图鉴的观测枢目录完全分开：上面 excludeCategories 里的「成就」只是不让 #xx图鉴 去查观测枢的成就条目，不影响这里。
+# 成就数据启动后自动同步（首次要一两分钟），之后每天检查一次；用户记录存在 data/Tomato-Plugin/gs/achievement/user/
+achievement:
+  enable: true        # 关掉后成就指令都不响应，也不同步数据（改完重启生效）
+  pageSize: 40        # #成就查漏 每页显示多少个成就
+
 api:
   timeout: 15000      # 单次请求超时（毫秒）
   indexTTL: 21600     # 目录缓存（秒），6 小时

@@ -28,6 +28,10 @@ const schemas = [
   { field: 'render.quality', label: '图片质量', component: 'InputNumber', bottomHelpMessage: 'JPEG 质量 1~100', componentProps: { min: 1, max: 100, placeholder: '90' } },
   { field: 'weapon.artDir', label: '武器立绘目录', component: 'Input', bottomHelpMessage: '喵喵插件的武器立绘目录（相对 Yunzai 根目录），找不到时用观测枢图标' },
 
+  { component: 'Divider', label: '成就' },
+  { field: 'achievement.enable', label: '成就功能', component: 'Switch', bottomHelpMessage: '#成就录入 / #成就查漏 / #成就统计 / #成就查询；数据来自 genshin-db，和图鉴的「不收录的分类」无关；修改后需重启' },
+  { field: 'achievement.pageSize', label: '查漏每页条数', component: 'InputNumber', bottomHelpMessage: '#成就查漏 每页显示多少个成就，默认 40', componentProps: { min: 10, max: 200, placeholder: '40' } },
+
   { component: 'Divider', label: '数据缓存' },
   { field: 'api.timeout', label: '请求超时（毫秒）', component: 'InputNumber', componentProps: { min: 1000, max: 120000, placeholder: '15000' } },
   { field: 'api.indexTTL', label: '目录缓存（秒）', component: 'InputNumber', componentProps: { min: 600, placeholder: '21600' } },
